@@ -1,0 +1,94 @@
+name: gym-detection
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: gym-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gym}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gym}
+      POSTGRES_DB: ${POSTGRES_DB:-gym}
+    ports:
+      # Mapeo a 5433 en el host para no chocar con un postgres local en 5432
+      # (dentro de la red docker sigue siendo 5432)
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gym} -d ${POSTGRES_DB:-gym}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - gym-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gym-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env.example
+    environment:
+      # En docker el host de postgres es el nombre del servicio
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-gym}:${POSTGRES_PASSWORD:-gym}@postgres:5432/${POSTGRES_DB:-gym}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-gym}:${POSTGRES_PASSWORD:-gym}@postgres:5432/${POSTGRES_DB:-gym}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Hot reload: montamos el código como volumen
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+      - ./backend/pyproject.toml:/app/pyproject.toml
+      # Cache de modelos de InsightFace entre reinicios
+      - insightface_cache:/home/appuser/.insightface
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - gym-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gym-frontend
+    restart: unless-stopped
+    env_file:
+      - ./frontend/.env.local.example
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/app:/app/app
+      - ./frontend/lib:/app/lib
+      - ./frontend/components:/app/components
+      - ./frontend/features:/app/features
+      - ./frontend/hooks:/app/hooks
+      - ./frontend/public:/app/public
+      # node_modules no se monta (se usa el del contenedor)
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - gym-net
+
+volumes:
+  postgres_data:
+    driver: local
+  insightface_cache:
+    driver: local
+
+networks:
+  gym-net:
+    driver: bridge

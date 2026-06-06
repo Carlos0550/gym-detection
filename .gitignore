@@ -1,0 +1,57 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Env files (cada subproyecto tiene el suyo)
+**/.env
+!**/.env.example
+!**/.env.local.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+.insightface/
+
+# Node
+node_modules/
+.pnp
+.pnp.js
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Docker volumes (comentado porque los volumes se manejan via docker-compose)
+# data/
+
+# Backups
+backups/
+*.sql.gz
