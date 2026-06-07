@@ -1,10 +1,16 @@
 """Modelos SQLAlchemy del proyecto.
 
-En Etapa 0 este módulo sólo reexporta ``Base`` para que Alembic tenga un
-target_metadata válido. Los modelos concretos (User, Gym, Member, etc.) se
-agregan en Etapas 1–5.
+Etapa 1: User, Gym, GymUser.
+Etapas siguientes: Member, Membership, FaceEmbedding, AccessLog, AuditLog.
+
+Importar los modelos aquí (además de en su propio módulo) es la forma
+estándar de que ``Base.metadata`` los vea y Alembic pueda autogenerar
+migraciones con solo hacer ``from app.models import Base``.
 """
 
 from app.models.base import Base
+from app.models.gym import Gym
+from app.models.gym_user import GymUser
+from app.models.user import User
 
-__all__ = ["Base"]
+__all__ = ["Base", "Gym", "GymUser", "User"]

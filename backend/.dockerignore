@@ -1,0 +1,29 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+.insightface/
+
+# --- Env files (no querés el .env con secretos en la imagen) ---
+.env
+.env.*
+!.env.example
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+*.swp
+.DS_Store

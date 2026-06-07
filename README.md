@@ -70,6 +70,9 @@ docker compose exec backend alembic revision --autogenerate -m "descripcion"
 # Correr migraciones
 docker compose exec backend alembic upgrade head
 
+# Correr tests (corre setup de DB de tests automáticamente)
+make test
+
 # Bajar todo y limpiar volúmenes
 docker compose down -v
 ```

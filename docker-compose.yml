@@ -43,6 +43,7 @@ services:
       - ./backend/alembic:/app/alembic
       - ./backend/alembic.ini:/app/alembic.ini
       - ./backend/pyproject.toml:/app/pyproject.toml
+      - ./backend/tests:/app/tests
       # Cache de modelos de InsightFace entre reinicios
       - insightface_cache:/home/appuser/.insightface
     depends_on:

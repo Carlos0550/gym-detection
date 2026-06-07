@@ -73,7 +73,10 @@ seed: ## Ejecutar seed inicial
 	$(COMPOSE) -f $(COMPOSE_FILE) exec $(BACKEND) python -m app.seed
 
 # ===== Backend: tests y calidad =====
-test: ## Correr tests del backend
+test-setup: ## Preparar DB de tests (drop+create+migrate). Una vez antes de la primera corrida.
+	$(COMPOSE) -f $(COMPOSE_FILE) exec $(BACKEND) python -m tests.setup_test_db
+
+test: test-setup ## Correr tests del backend (corre test-setup antes)
 	$(COMPOSE) -f $(COMPOSE_FILE) exec $(BACKEND) pytest
 
 lint: ## Correr ruff en el backend

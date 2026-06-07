@@ -35,20 +35,21 @@ RUN useradd --create-home --shell /bin/bash appuser
 
 WORKDIR /app
 
-# --- Venv owned by appuser, all deps go there ---
+# --- Venv con python del sistema (NO uv venv: crea symlinks a paths del host) ---
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH=/app
 
-RUN uv venv /app/.venv && \
+RUN python -m venv /app/.venv && \
     chown -R appuser:appuser /app/.venv
 
 # --- Deps (cache de layer) ---
 # Copiamos pyproject.toml y la app entera (en build time)
 COPY pyproject.toml ./
-# No usamos --no-install-project para que uv reconozca correctamente el proyecto
-# en runtime (con los volúmenes montados, queremos que "uv run" no intente re-sync)
-RUN uv pip install --python /app/.venv/bin/python -e .
+# En este Dockerfile (dev) instalamos el proyecto + el grupo dev con
+# pytest/ruff. En producción se debería usar otro Dockerfile multi-stage
+# que sólo instale las deps de runtime.
+RUN uv pip install --python /app/.venv/bin/python --group dev -e .
 
 # --- Código (en runtime se sobreescribe con el volumen) ---
 COPY --chown=appuser:appuser . .
