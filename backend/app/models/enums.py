@@ -7,17 +7,17 @@ class GymUserRole(str, enum.Enum):
     """Rol de un user DENTRO de un gym específico.
 
     Los roles se evalúan de menor a mayor privilegio:
-        operator < manager < owner
+        client < manager < owner
     """
 
-    OPERATOR = "operator"
+    CLIENT = "client"
     MANAGER = "manager"
     OWNER = "owner"
 
 
 # Jerarquía explícita para chequeos de "rol mínimo requerido".
 ROLE_HIERARCHY: dict[GymUserRole, int] = {
-    GymUserRole.OPERATOR: 1,
+    GymUserRole.CLIENT: 1,
     GymUserRole.MANAGER: 2,
     GymUserRole.OWNER: 3,
 }

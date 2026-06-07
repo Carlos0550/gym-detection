@@ -1,7 +1,7 @@
 """Dependencias compartidas de FastAPI: auth, RBAC, sesión de DB.
 
 Jerarquía de roles (en el módulo `app.models.enums`):
-    operator < manager < owner
+    client < manager < owner
 """
 
 import uuid
@@ -108,7 +108,7 @@ class GymRoleChecker:
         ):
     """
 
-    def __init__(self, min_role: GymUserRole = GymUserRole.OPERATOR) -> None:
+    def __init__(self, min_role: GymUserRole = GymUserRole.CLIENT) -> None:
         self.min_role = min_role
 
     async def __call__(

@@ -121,14 +121,14 @@ async def owner_user(engine) -> User:
 
 
 @pytest_asyncio.fixture
-async def operator_user(engine) -> User:
+async def client_user(engine) -> User:
     factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
     async with factory() as session:
         user = User(
             id=uuid.uuid4(),
-            email="operator@test.com",
-            password_hash=hash_password("operatorpass123"),
-            full_name="Operator",
+            email="client@test.com",
+            password_hash=hash_password("clientpass123"),
+            full_name="Client User",
         )
         session.add(user)
         await session.commit()
@@ -160,11 +160,11 @@ async def owner_link(engine, gym: Gym, owner_user: User) -> GymUser:
 
 
 @pytest_asyncio.fixture
-async def operator_link(engine, gym: Gym, operator_user: User) -> GymUser:
+async def client_link(engine, gym: Gym, client_user: User) -> GymUser:
     factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
     async with factory() as session:
         link = GymUser(
-            gym_id=gym.id, user_id=operator_user.id, role=GymUserRole.OPERATOR
+            gym_id=gym.id, user_id=client_user.id, role=GymUserRole.CLIENT
         )
         session.add(link)
         await session.commit()
@@ -182,8 +182,8 @@ async def owner_token(owner_user: User) -> str:
 
 
 @pytest_asyncio.fixture
-async def operator_token(operator_user: User) -> str:
-    return create_access_token(operator_user.id)
+async def client_token(client_user: User) -> str:
+    return create_access_token(client_user.id)
 
 
 def auth_headers(token: str) -> dict[str, str]:

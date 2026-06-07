@@ -11,8 +11,8 @@ class AdminCreateUserRequest(BaseModel):
         - Devuelve 403 si el caller no es superadmin.
     """
 
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
-    full_name: str = Field(min_length=2, max_length=255)
+    email: EmailStr = Field(examples=["admin@gym.com"])
+    password: str = Field(min_length=8, max_length=128, examples=["adminpass789"])
+    full_name: str = Field(min_length=2, max_length=255, examples=["Admin User"])
     is_superadmin: bool = False
     is_active: bool = True

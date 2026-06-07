@@ -35,7 +35,7 @@ class GymUser(Base):
     role: Mapped[GymUserRole] = mapped_column(
         SAEnum(GymUserRole, name="gym_user_role", native_enum=True),
         nullable=False,
-        default=GymUserRole.OPERATOR,
+        default=GymUserRole.CLIENT,
     )
 
     created_at: Mapped[datetime] = mapped_column(

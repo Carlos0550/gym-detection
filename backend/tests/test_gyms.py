@@ -34,10 +34,10 @@ async def test_list_gyms_as_member_returns_only_their_gyms(
 
 
 async def test_list_gyms_as_user_without_membership_returns_empty(
-    client: AsyncClient, operator_token: str
+    client: AsyncClient, client_token: str
 ):
     response = await client.get(
-        "/api/v1/gyms", headers=auth_headers(operator_token)
+        "/api/v1/gyms", headers=auth_headers(client_token)
     )
     assert response.status_code == 200
     assert response.json() == []
@@ -49,12 +49,12 @@ async def test_list_gyms_without_token_returns_401(client: AsyncClient):
 
 
 async def test_create_gym_requires_superadmin(
-    client: AsyncClient, operator_token: str
+    client: AsyncClient, client_token: str
 ):
     response = await client.post(
         "/api/v1/gyms",
         json={"name": "New Gym", "address": "x", "phone": "y"},
-        headers=auth_headers(operator_token),
+        headers=auth_headers(client_token),
     )
     assert response.status_code == 403
 
@@ -78,21 +78,21 @@ async def test_create_gym_as_superadmin(
 
 
 async def test_get_gym_as_member(
-    client: AsyncClient, operator_token: str, operator_link, gym
+    client: AsyncClient, client_token: str, client_link, gym
 ):
     response = await client.get(
-        f"/api/v1/gyms/{gym.id}", headers=auth_headers(operator_token)
+        f"/api/v1/gyms/{gym.id}", headers=auth_headers(client_token)
     )
     assert response.status_code == 200
     assert response.json()["name"] == "Test Gym"
 
 
 async def test_get_gym_as_non_member_returns_403(
-    client: AsyncClient, operator_token: str, gym
+    client: AsyncClient, client_token: str, gym
 ):
-    # operator_token no está vinculado al gym
+    # client_token no está vinculado al gym
     response = await client.get(
-        f"/api/v1/gyms/{gym.id}", headers=auth_headers(operator_token)
+        f"/api/v1/gyms/{gym.id}", headers=auth_headers(client_token)
     )
     assert response.status_code == 403
 
@@ -108,12 +108,12 @@ async def test_get_gym_not_found(client: AsyncClient, superadmin_token: str):
 
 
 async def test_update_gym_requires_owner(
-    client: AsyncClient, operator_token: str, operator_link, gym
+    client: AsyncClient, client_token: str, client_link, gym
 ):
     response = await client.patch(
         f"/api/v1/gyms/{gym.id}",
         json={"name": "Hacked"},
-        headers=auth_headers(operator_token),
+        headers=auth_headers(client_token),
     )
     assert response.status_code == 403
 

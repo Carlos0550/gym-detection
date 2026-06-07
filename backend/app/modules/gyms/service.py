@@ -2,6 +2,11 @@
 
 import uuid
 
+from app.core.security import create_access_token, hash_password
+from app.core.logging import logger
+from app.models.enums import GymUserRole
+from app.modules.gyms.schemas import GymOnboardingRequest, GymOnboardingResponse
+from app.utils.phone import to_e164
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,6 +49,55 @@ async def create_gym(db: AsyncSession, *, name: str, address: str | None, phone:
         await db.rollback()
         raise ConflictError("No se pudo crear el gimnasio") from exc
     await db.refresh(gym)
+    return gym
+
+async def create_gym_onboarding(
+    db: AsyncSession,
+    request: GymOnboardingRequest
+) -> GymOnboardingResponse:
+    try:
+        password_hash = hash_password(request.password)
+        new_user = User(
+            email=request.email.lower().strip(),
+            password_hash=password_hash,
+            full_name=request.operator_name.strip().lower(),
+        )
+        db.add(new_user)
+        await db.flush()
+        await db.refresh(new_user)
+        new_gym = Gym(
+            name=request.gym_name.strip().lower(),
+            address=request.gym_address.strip().lower(),
+            phone=to_e164(request.gym_phone),
+        )
+        db.add(new_gym)
+        await db.flush()
+        await db.refresh(new_gym)
+        new_gym_user = GymUser(
+            gym_id=new_gym.id,
+            user_id=new_user.id,
+            role=GymUserRole.OWNER,
+        )
+        db.add(new_gym_user)
+        await db.commit()
+        await db.refresh(new_gym_user)
+        return GymOnboardingResponse(
+            gym_name=new_gym.name,
+            gym_address=new_gym.address,
+            operator_name=new_user.full_name,
+            operator_email=new_user.email,
+            operator_access_token=create_access_token(new_user.id),
+        )
+    except Exception as e:
+        logger.error("Error creating gym onboarding", error=e)
+        await db.rollback()
+        raise ConflictError("No se pudo crear el gimnasio") from e
+
+async def get_gym(db: AsyncSession, gym_id: uuid.UUID) -> Gym:
+    result = await db.execute(select(Gym).where(Gym.id == gym_id))
+    gym = result.scalar_one_or_none()
+    if gym is None:
+        raise NotFoundError("Gimnasio no encontrado")
     return gym
 
 

@@ -19,6 +19,8 @@ router = APIRouter(prefix="/admin", tags=["admin"])
     "/users",
     response_model=MeResponse,
     status_code=status.HTTP_201_CREATED,
+    summary="Crear usuario (superadmin)",
+    description="Crea un usuario con opción de definir is_superadmin e is_active. A diferencia del registro público, este endpoint permite crear admins y usuarios inactivos.",
 )
 async def create_user(
     body: AdminCreateUserRequest,
