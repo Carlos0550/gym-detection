@@ -2,7 +2,7 @@
 
 GET    /gyms                  — gyms a los que el user tiene acceso
 POST   /gyms                  — crear (superadmin)
-GET    /gyms/{gym_id}         — detalle (miembro con rol operator+)
+GET    /gyms/{gym_id}         — detalle (miembro con cualquier rol)
 PATCH  /gyms/{gym_id}         — editar (owner)
 POST   /gyms/public/onboarding — onboarding (public) - Registra un usuario con rol OWNER y su primer gym
 """
@@ -96,7 +96,7 @@ async def update_gym_endpoint(
     "/public/onboarding",
     response_model=GymOnboardingResponse,
     summary="Onboarding público",
-    description="Registra un nuevo usuario (rol OWNER) y su primer gimnasio en una sola transacción. Devuelve los datos del gimnasio creado y un access token para el operador.",
+    description="Registra un nuevo usuario (rol OWNER) y su primer gimnasio en una sola transacción. Devuelve los datos del gimnasio creado y un access token para el owner.",
 )
 async def onboarding(
     body: GymOnboardingRequest,

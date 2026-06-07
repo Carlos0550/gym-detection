@@ -60,7 +60,7 @@ async def create_gym_onboarding(
         new_user = User(
             email=request.email.lower().strip(),
             password_hash=password_hash,
-            full_name=request.operator_name.strip().lower(),
+            full_name=request.owner_name.strip().lower(),
         )
         db.add(new_user)
         await db.flush()
@@ -84,9 +84,9 @@ async def create_gym_onboarding(
         return GymOnboardingResponse(
             gym_name=new_gym.name,
             gym_address=new_gym.address,
-            operator_name=new_user.full_name,
-            operator_email=new_user.email,
-            operator_access_token=create_access_token(new_user.id),
+            owner_name=new_user.full_name,
+            owner_email=new_user.email,
+            owner_access_token=create_access_token(new_user.id),
         )
     except Exception as e:
         logger.error("Error creating gym onboarding", error=e)

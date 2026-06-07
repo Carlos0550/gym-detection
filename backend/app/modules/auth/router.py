@@ -1,13 +1,12 @@
-"""Endpoints de autenticación: login, register, me. requiere un token de acceso para acceder a los endpoints."""
+"""Endpoints de autenticación: login, me."""
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter
 
-from app.core.dependencies import CurrentUser, DbSession, Superadmin
+from app.core.dependencies import CurrentUser, DbSession
 from app.modules.auth import service
 from app.modules.auth.schemas import (
     LoginRequest,
     MeResponse,
-    RegisterRequest,
     TokenResponse,
 )
 
@@ -23,36 +22,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def login(body: LoginRequest, db: DbSession) -> TokenResponse:
     user, token, expires_in = await service.login(db, body.email, body.password)
     return TokenResponse(access_token=token, expires_in=expires_in)
-
-
-@router.post(
-    "/register",
-    response_model=MeResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Registrar usuario (superadmin/owner/manager)",
-    description="Crea un usuario con rol CLIENT (privilegio mínimo). Requiere autenticación con rol superadmin, owner o manager.",
-)
-async def register(
-    body: RegisterRequest,
-    db: DbSession,
-    user: CurrentUser,
-) -> MeResponse:
-    user = await service.register_user(
-        db,
-        email=body.email,
-        password=body.password,
-        full_name=body.full_name,
-        is_superadmin=False,
-    )
-    return MeResponse(
-        id=user.id,
-        email=user.email,
-        full_name=user.full_name,
-        is_superadmin=user.is_superadmin,
-        is_active=user.is_active,
-        created_at=user.created_at,
-        memberships=[],
-    )
 
 
 @router.get(

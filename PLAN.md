@@ -56,24 +56,28 @@ Documento de tracking interno. Refleja el plan original acordado y el estado de 
 
 ### ~~Etapa 1 — Auth & base~~ ✅
 - ~~Modelos: `User`, `Gym`, `GymUser`~~
-- ~~Enum `GymUserRole` (operator < manager < owner) con jerarquía~~
+- ~~Enum `GymUserRole` (client < manager < owner) con jerarquía~~
 - ~~Migración inicial (autogenerada, con `CREATE EXTENSION vector` y `DO $$` para idempotencia del enum)~~
 - ~~`core/security.py`: argon2 hashing + JWT con python-jose~~
 - ~~`core/dependencies.py`: `get_current_user`, `require_superadmin`, `GymRoleChecker` (class-based dependency)~~
-- ~~`modules/auth/`: `POST /auth/login`, `POST /auth/register`, `GET /auth/me`~~
-- ~~`modules/gyms/`: `GET/POST/PATCH /gyms` con RBAC por gym~~
+- ~~`modules/auth/`: `POST /auth/login`, `GET /auth/me`~~
+- ~~`modules/gyms/`: `GET/POST/PATCH /gyms` con RBAC por gym, `POST /gyms/public/onboarding` (público: registra user+owner+gym en una transacción)~~
+- ~~`modules/users/`: `POST /gyms/{gym_id}/users` (owner/manager crea user con rol CLIENT o MANAGER, atado al gym)~~
+- ~~`modules/admin/`: `POST /admin/users` (solo superadmin, flags especiales is_superadmin/is_active)~~
 - ~~`api/v1.py`: agrega routers bajo `/api/v1`~~
 - ~~`seed.py` funcional: crea superadmin + gym demo + owner link (idempotente)~~
-- ~~Tests: conftest con test DB dedicada (`gym_test`), fixtures (users, gym, tokens), 22 tests para auth + gyms~~
+- ~~Tests: conftest con test DB dedicada (`gym_test`), fixtures (users, gym, tokens, manager), tests para auth + gyms + users + admin~~
 
-### Etapa 2 — Members + Memberships
-- Modelos: `Member`, `Membership` con enums `MemberStatus` y `MembershipStatus`
-- Campo `biometric_consent_at` en Member (bloqueante para enrolar)
-- Tabla `members` con `UNIQUE(gym_id, document)`
-- Tabla `memberships` con FK a members
-- Cálculo de membresía vigente (start_date/end_date + status)
-- Endpoints CRUD para members y memberships
-- Tests
+### ~~Etapa 2 — Members + Memberships~~ ❌ (saltada: overengineering)
+- ~~Modelos: `Member`, `Membership` con enums `MemberStatus` y `MembershipStatus`~~
+- ~~Campo `biometric_consent_at` en Member (bloqueante para enrolar)~~
+- ~~Tabla `members` con `UNIQUE(gym_id, document)`~~
+- ~~Tabla `memberships` con FK a members~~
+- ~~Cálculo de membresía vigente (start_date/end_date + status)~~
+- ~~Endpoints CRUD para members y memberships~~
+- ~~Tests~~
+
+> **Razón del skip:** `User` + `GymUser(rol=CLIENT)` ya modelan "esta persona es miembro de este gym". Crear tablas separadas para `Member` y `Membership` duplicaba el modelo y agregaba un `biometric_consent_at` redundante. Los embeddings faciales y access logs se atan a `user_id` directamente. El consentimiento biométrico (cuando llegue el momento) vive en `GymUser`.
 
 ### Etapa 3 — Motor facial
 - `app/modules/face/engine.py`: wrapper de InsightFace

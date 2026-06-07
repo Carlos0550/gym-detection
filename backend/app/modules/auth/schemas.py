@@ -11,12 +11,6 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128, examples=["strongpass123"])
 
 
-class RegisterRequest(BaseModel):
-    email: EmailStr = Field(examples=["jane@doe.com"])
-    password: str = Field(min_length=8, max_length=128, examples=["securepass456"])
-    full_name: str = Field(min_length=2, max_length=255, examples=["Jane Doe"])
-
-
 class TokenResponse(BaseModel):
     access_token: str = Field(examples=["eyJhbGciOiJIUzI1NiIs..."])
     token_type: str = "bearer"

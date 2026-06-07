@@ -2,7 +2,7 @@
 
 Sistema de reconocimiento facial para gimnasios. Permite identificar miembros y validar el estado de su membresía en tiempo real.
 
-> **Etapa actual: 0 — Setup base.** La estructura de carpetas, Docker Compose, configuración y stubs están listos. No hay endpoints de negocio implementados todavía.
+> **Etapa actual: 1 — Auth & base ✅.** Auth con JWT, modelos `User`/`Gym`/`GymUser` con RBAC por gym, endpoint público de onboarding (`POST /gyms/public/onboarding`) para que un usuario nuevo registre su gym como OWNER.
 
 ---
 
@@ -112,9 +112,9 @@ gym-detection/
 
 ## Roadmap de etapas
 
-- [x] **Etapa 0**: Setup base (estructura, docker, configs) ← *estás acá*
-- [ ] **Etapa 1**: Auth & base — modelos User/Gym/GymUser, login JWT, RBAC por gym
-- [ ] **Etapa 2**: Gyms + Members + Memberships CRUD + consentimiento biométrico
+- [x] **Etapa 0**: Setup base (estructura, docker, configs)
+- [x] **Etapa 1**: Auth & base — modelos User/Gym/GymUser, login JWT, RBAC por gym, onboarding público
+- [x] **Etapa 2**: ~~Members + Memberships CRUD + consentimiento biométrico~~ (saltada: overengineering)
 - [ ] **Etapa 3**: Motor facial (InsightFace engine, carga en lifespan)
 - [ ] **Etapa 4**: Enrolamiento facial (`POST /face/enroll`)
 - [ ] **Etapa 5**: Verificación facial (`POST /access/verify-face`)

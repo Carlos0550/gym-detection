@@ -1,4 +1,4 @@
-"""Lógica de negocio de auth: login, register, me."""
+"""Lógica de negocio de auth: login, me."""
 
 import uuid
 
@@ -37,7 +37,11 @@ async def register_user(
     full_name: str,
     is_superadmin: bool = False,
 ) -> User:
-    """Crea un user nuevo. Email debe ser único."""
+    """Helper usado por ``POST /admin/users`` (superadmin) para crear users
+    con flags especiales (is_superadmin, is_active). No es un endpoint público.
+
+    Para crear usuarios vinculados a un gym, usar ``POST /gyms/{gym_id}/users``.
+    """
     user = User(
         id=uuid.uuid4(),
         email=email.lower(),

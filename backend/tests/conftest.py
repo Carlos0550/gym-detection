@@ -182,6 +182,39 @@ async def owner_token(owner_user: User) -> str:
 
 
 @pytest_asyncio.fixture
+async def manager_user(engine) -> User:
+    factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
+    async with factory() as session:
+        user = User(
+            id=uuid.uuid4(),
+            email="manager@test.com",
+            password_hash=hash_password("managerpass123"),
+            full_name="Manager User",
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def manager_link(engine, gym: Gym, manager_user: User) -> GymUser:
+    factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
+    async with factory() as session:
+        link = GymUser(
+            gym_id=gym.id, user_id=manager_user.id, role=GymUserRole.MANAGER
+        )
+        session.add(link)
+        await session.commit()
+    return link
+
+
+@pytest_asyncio.fixture
+async def manager_token(manager_user: User) -> str:
+    return create_access_token(manager_user.id)
+
+
+@pytest_asyncio.fixture
 async def client_token(client_user: User) -> str:
     return create_access_token(client_user.id)
 
