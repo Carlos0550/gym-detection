@@ -41,16 +41,6 @@ async def create_gym(
     return GymResponse.model_validate(gym)
 
 
-@router.get("/{gym_id}", response_model=GymResponse)
-async def get_gym_endpoint(
-    gym_id: uuid.UUID,
-    db: DbSession,
-    _: GymContext,
-) -> GymResponse:
-    gym = await service.get_gym(db, gym_id)
-    return GymResponse.model_validate(gym)
-
-
 @router.patch("/{gym_id}", response_model=GymResponse)
 async def update_gym_endpoint(
     gym_id: uuid.UUID,

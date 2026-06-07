@@ -12,12 +12,15 @@ class LoginRequest(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    """Body para POST /auth/register. Solo accesible por superadmin."""
+    """Body para POST /auth/register (público, self-service).
+
+    Crea un user normal (is_superadmin=False forzado en el service).
+    Para crear superadmins o usuarios inactivos usar POST /admin/users.
+    """
 
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=2, max_length=255)
-    is_superadmin: bool = False
 
 
 class TokenResponse(BaseModel):

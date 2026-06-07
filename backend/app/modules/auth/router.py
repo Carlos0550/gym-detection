@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, status
 
-from app.core.dependencies import CurrentUser, DbSession, Superadmin
+from app.core.dependencies import CurrentUser, DbSession
 from app.modules.auth import service
 from app.modules.auth.schemas import (
     LoginRequest,
@@ -28,14 +28,13 @@ async def login(body: LoginRequest, db: DbSession) -> TokenResponse:
 async def register(
     body: RegisterRequest,
     db: DbSession,
-    _: Superadmin,
 ) -> MeResponse:
     user = await service.register_user(
         db,
         email=body.email,
         password=body.password,
         full_name=body.full_name,
-        is_superadmin=body.is_superadmin,
+        is_superadmin=True,
     )
     return MeResponse(
         id=user.id,

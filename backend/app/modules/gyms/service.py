@@ -35,16 +35,6 @@ async def list_all_gyms(db: AsyncSession) -> list[Gym]:
     return list(result.scalars().all())
 
 
-async def get_gym(db: AsyncSession, gym_id: uuid.UUID) -> Gym:
-    result = await db.execute(
-        select(Gym).options(selectinload(Gym.user_links)).where(Gym.id == gym_id)
-    )
-    gym = result.scalar_one_or_none()
-    if gym is None:
-        raise NotFoundError(f"Gimnasio {gym_id} no encontrado")
-    return gym
-
-
 async def create_gym(db: AsyncSession, *, name: str, address: str | None, phone: str | None) -> Gym:
     gym = Gym(name=name, address=address, phone=phone)
     db.add(gym)
