@@ -235,5 +235,49 @@ docker builder prune -af
 ## Estado al cierre de este bloque
 
 - Etapa 0 ✅ Setup base (Docker, configs, Makefile)
-- Etapa 1 ✅ Auth + Gyms + Tests (24 tests passing)
-- Pendientes: Etapas 2–8 (members, motor facial, enrolamiento, verificación, frontend, docs)
+- Etapa 1 ✅ Auth + Gyms + Users + Tests (40 tests passing)
+  - `POST /gyms/{gym_id}/users` (nuevo): owner/manager crea user con rol CLIENT o MANAGER
+  - `kind_role` solo respetado si caller es OWNER; MANAGER siempre crea CLIENT
+  - `POST /auth/register` eliminado (era bug: no creaba GymUser)
+- Etapa 2 ❌ Saltada: Members + Memberships como tablas separadas = overengineering
+  - `User` + `GymUser(role=CLIENT)` ya modelan el concepto
+  - Embeddings faciales y access logs se atan a `user_id` directamente
+- Etapa 3 ⏳ Motor facial (6/8 fases hechas)
+  - `app/modules/face/`: schemas, exceptions, engine, dependencies
+  - Enum rename: `OPERATOR` → `CLIENT` (migración `b67c2a3d4e5f`)
+  - `FaceEngine` con `_app: FaceAnalysis | None` para degraded mode
+  - Provider name correcto: `CPUExecutionProvider` (no `CPU`)
+  - Defense in depth: size → magic bytes → format whitelist → RGB
+  - Pendiente: Fase 7 (lifespan + dependency integration) y Fase 8 (tests con caras reales LFW)
+- Pendientes: Etapas 4-8 (enrolamiento, verificación, frontend, docs)
+
+## Sobre la skill `instructor-mode`
+
+Creada en `~/.claude/skills/instructor-mode/SKILL.md`. Actívala cuando el usuario pida aprender paso a paso o después de planificar una feature. NO para tareas mecánicas ni bugfixes donde pidió solución directa.
+
+## Aprendizajes específicos de InsightFace (Etapa 3)
+
+### `buffalo_l` y los "packs" de modelos
+- `buffalo_l` = bundle con detector + recognizer + landmarks + genderage
+- Solo cargamos `["detection", "recognition"]` (allowed_modules), ahorrando ~100MB
+- El recognizer (`w600k_r50.onnx`) produce embeddings de 512-d normalizados
+
+### Nombres de providers en ONNX Runtime
+- "CPU" NO es el nombre correcto — es `"CPUExecutionProvider"`
+- InsightFace hace fallback automático pero ensucia logs con `EP Error`
+- Fix: usar el nombre completo en `.env` y en `Settings` default
+
+### `docker compose restart` vs `down`+`up` para env_file
+- `restart` a veces no re-lee `env_file` (el container mantiene env viejo)
+- `down` + `up` siempre toma los cambios
+- Para cambios en `.env` usar `down` + `up`
+
+### Errores comunes de Python que aprendimos
+- `len(x > 10)` vs `len(x) > 10` (paréntesis mal = TypeError)
+- `try/except` con `return` en el except → olvidar el success path → función no hace nada
+- `tuple[str, str] = [...]` (type hint de tupla pero asignación de lista) — type hint incorrecto
+
+### Degraded mode pattern
+- `app.state.X: T | None` con check en dependency
+- Permite que la app arranque aunque un componente crítico falle
+- Trade-off: complejidad vs disponibilidad

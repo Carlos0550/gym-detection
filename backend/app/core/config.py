@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     # ===== Motor facial =====
     face_model_name: str = "buffalo_l"
-    face_execution_provider: str = "CPU"
+    face_execution_provider: str = "CPUExecutionProvider"
     face_det_size_width: int = 640
     face_det_size_height: int = 640
     face_threshold_match: float = 0.55

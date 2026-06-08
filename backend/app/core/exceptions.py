@@ -28,3 +28,8 @@ class UnauthorizedError(DomainError):
 class ConflictError(DomainError):
     def __init__(self, detail: str = "Conflicto con el estado actual"):
         super().__init__(detail=detail, status_code=status.HTTP_409_CONFLICT)
+
+class ServiceUnavailableError(HTTPException):
+    def __init__(self, detail: str = "Servicio no disponible"):
+        super().__init__(detail= detail, status_code= status.HTTP_503_SERVICE_UNAVAILABLE)
+        
