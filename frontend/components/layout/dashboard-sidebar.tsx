@@ -18,7 +18,7 @@ import { GymSelector } from "./gym-selector";
 const navItems = [
   { href: "/members", label: "Miembros", icon: Users, tag: "Panel" },
   { href: "/reception", label: "Recepción", icon: ScanFace, tag: "En vivo" },
-  { href: "/access-logs", label: "Registros", icon: ClipboardList, tag: "Auditoría" },
+  { href: "/access-logs", label: "Registros", icon: ClipboardList, tag: "Historial" },
 ];
 
 export function DashboardSidebar() {
@@ -33,7 +33,7 @@ export function DashboardSidebar() {
 
       <div className="px-5 pb-4">
         <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-2">
-          Sede activa
+          Gimnasio seleccionado
         </p>
         <GymSelector />
       </div>

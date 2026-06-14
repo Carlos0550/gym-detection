@@ -45,7 +45,13 @@ def estimate_head_yaw(detection: FaceDetection) -> float:
 
 
 def validate_enroll_pose(detection: FaceDetection, step: EnrollPoseStep) -> None:
-    """Valida que un frame cumpla la pose pedida en el paso guiado."""
+    """Valida que un frame cumpla la pose pedida en el paso guiado.
+
+    Los frames del enrolamiento guiado vienen espejados (vista selfie del
+    frontend), por lo que el signo del yaw queda invertido respecto a una foto
+    estándar: girar a la izquierda del usuario desplaza la nariz hacia la
+    izquierda de la imagen (yaw negativo).
+    """
     yaw = estimate_head_yaw(detection)
 
     if step == EnrollPoseStep.CENTER:
@@ -56,14 +62,14 @@ def validate_enroll_pose(detection: FaceDetection, step: EnrollPoseStep) -> None
         return
 
     if step == EnrollPoseStep.LEFT:
-        if yaw < TURN_MIN_YAW:
+        if yaw > -TURN_MIN_YAW:
             raise LivenessFailedError(
                 "Girá la cabeza hacia tu izquierda (mostrá el costado izquierdo)"
             )
         return
 
     if step == EnrollPoseStep.RIGHT:
-        if yaw > -TURN_MIN_YAW:
+        if yaw < TURN_MIN_YAW:
             raise LivenessFailedError(
                 "Girá la cabeza hacia tu derecha (mostrá el costado derecho)"
             )
@@ -85,11 +91,11 @@ def validate_guided_enroll_poses(detections: list[FaceDetection]) -> None:
     for detection, step in zip(detections, GUIDED_ENROLL_STEPS, strict=True):
         validate_enroll_pose(detection, step)
 
-    if yaws[1] <= yaws[0] + 0.05:
+    if yaws[1] >= yaws[0] - 0.05:
         raise LivenessFailedError(
             "Paso izquierda: girá más hacia la izquierda respecto al centro"
         )
-    if yaws[2] >= yaws[0] - 0.05:
+    if yaws[2] <= yaws[0] + 0.05:
         raise LivenessFailedError(
             "Paso derecha: girá más hacia la derecha respecto al centro"
         )

@@ -3,6 +3,7 @@ import type {
   CreateGymUserPayload,
   GymClient,
   UpdateGymUserPayload,
+  UserCreatedResponse,
 } from "@/lib/types/api";
 
 export async function listGymClients(gymId: string): Promise<GymClient[]> {
@@ -12,8 +13,8 @@ export async function listGymClients(gymId: string): Promise<GymClient[]> {
 export async function createGymUser(
   gymId: string,
   payload: CreateGymUserPayload,
-): Promise<GymClient> {
-  return apiFetch<GymClient>(`/gyms/${gymId}/users`, {
+): Promise<UserCreatedResponse> {
+  return apiFetch<UserCreatedResponse>(`/gyms/${gymId}/users`, {
     method: "POST",
     body: JSON.stringify(payload),
   });

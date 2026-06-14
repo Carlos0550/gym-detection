@@ -3,13 +3,20 @@ import { Brand } from "@/components/layout/brand";
 import { Lock } from "lucide-react";
 
 const benefits = [
-  "Recepción en vivo con verificación automática",
-  "Enrolamiento facial guiado paso a paso",
+  "Recepción en vivo con escaneo continuo",
+  "Registro facial guiado paso a paso",
   "Gestión de miembros y membresías",
-  "Logs auditables de cada acceso",
+  "Historial de ingresos de cada acceso",
 ];
 
-export default function LoginPage() {
+type Props = {
+  searchParams: Promise<{ session?: string }>;
+};
+
+export default async function LoginPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const sessionExpired = params.session === "expired";
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b border-border bg-background/70 backdrop-blur-[14px]">
@@ -33,7 +40,8 @@ export default function LoginPage() {
               Ingresá a tu <span className="text-primary">panel.</span>
             </h1>
             <p className="page-sub">
-              Usá tu cuenta de owner o manager para gestionar miembros, recepción y registros de acceso.
+              Usá tu cuenta de dueño del gimnasio o encargado para gestionar miembros, recepción e
+              historial de ingresos.
             </p>
           </div>
 
@@ -48,17 +56,17 @@ export default function LoginPage() {
                   Tu email es tu usuario. La sesión se mantiene activa en este dispositivo.
                 </p>
               </div>
-              <LoginForm />
+              <LoginForm sessionExpired={sessionExpired} />
             </div>
 
             <aside className="space-y-4 lg:sticky lg:top-24">
               <div className="rounded-xl border border-border bg-card p-7">
                 <div className="section-tag">Panel Verifica</div>
                 <h3 className="mt-2.5 text-lg font-semibold tracking-[-0.015em]">
-                  Todo el MVP activo.
+                  Todas las funciones incluidas.
                 </h3>
                 <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-                  Recepción, enrolamiento, miembros y logs en un solo lugar.
+                  Recepción, registro facial, miembros e historial en un solo lugar.
                 </p>
                 <ul className="mt-5 space-y-2.5">
                   {benefits.map((item) => (
@@ -87,7 +95,7 @@ export default function LoginPage() {
                 <div>
                   <h4 className="text-[13px] font-semibold">Tus datos están cifrados</h4>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    TLS 1.3 en tránsito · AES-256 en reposo. Embeddings biométricos cifrados.
+                    Conexión segura · Almacenamiento cifrado. Datos faciales cifrados.
                   </p>
                 </div>
               </div>

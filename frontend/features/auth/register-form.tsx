@@ -155,20 +155,24 @@ export function RegisterForm() {
       }),
     onSuccess: async () => {
       await queryClient.fetchQuery({ queryKey: ["auth", "me"], queryFn: getMe });
-      toast.success("Cuenta creada. ¡Bienvenido a Verifica!");
       router.replace("/members");
     },
     onError: (error: ApiError) => {
       const detail = error.detail?.toLowerCase() ?? "";
       if (error.status === 409 || detail.includes("crear")) {
-        toast.error("No se pudo crear la cuenta. El email puede estar en uso.");
+        toast.error("No se pudo crear la cuenta. El email puede estar en uso.", {
+          duration: 12000,
+        });
         return;
       }
       if (detail.includes("phone") || detail.includes("teléfono")) {
-        toast.error("El teléfono del gimnasio no es válido. Usá formato internacional, ej. +54 11 5555 0000");
+        toast.error(
+          "El teléfono del gimnasio no es válido. Usá formato internacional, ej. +54 11 5555 0000",
+          { duration: 12000 },
+        );
         return;
       }
-      toast.error(error.detail || "No se pudo crear la cuenta");
+      toast.error(error.detail || "No se pudo crear la cuenta", { duration: 12000 });
     },
   });
 
@@ -304,10 +308,10 @@ export function RegisterForm() {
           <div className="mb-5">
             <div className="section-tag">Paso 02 · Cuenta</div>
             <h2 className="mt-2.5 text-[19px] font-semibold tracking-[-0.015em]">
-              Tu cuenta de owner
+              Tu cuenta de dueño del gimnasio
             </h2>
             <p className="mt-1.5 max-w-[520px] text-[13px] leading-relaxed text-muted-foreground">
-              Vas a ser el administrador principal. Después vas a poder invitar al staff desde
+              Vas a ser el administrador principal. Después vas a poder invitar al equipo desde
               Configuración → Usuarios.
             </p>
           </div>
@@ -474,9 +478,9 @@ export function RegisterForm() {
                   <FormControl>
                     <TermCheckbox checked={!!field.value} onChange={field.onChange}>
                       <strong className="text-foreground">Consentimiento biométrico.</strong>{" "}
-                      Entiendo que Verifica va a almacenar embeddings cifrados de los rostros de mis
-                      miembros, y que cada uno deberá firmar su propio consentimiento antes de
-                      enrolarse.
+                      Entiendo que Verifica va a almacenar datos faciales cifrados de los rostros de
+                      mis miembros, y que cada uno deberá firmar su propio consentimiento antes de
+                      registrarse.
                     </TermCheckbox>
                   </FormControl>
                   <FormMessage />

@@ -76,7 +76,7 @@ async def enroll_face(
     try:
         detections = checker.detect_all(face_engine, frames)
         validate_guided_enroll_poses(detections)
-        detection = checker.verify_detections(face_engine, detections)
+        detection = checker.verify_guided_enroll_detections(face_engine, detections)
     except LivenessFailedError as exc:
         raise ConflictError(str(exc)) from exc
 

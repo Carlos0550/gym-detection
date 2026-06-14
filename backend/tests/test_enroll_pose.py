@@ -43,20 +43,22 @@ def test_validate_center_rejects_turned_face():
 
 
 def test_validate_left_requires_turn():
-    validate_enroll_pose(_detection(170.0), EnrollPoseStep.LEFT)
+    # Frame espejado: izquierda del usuario → nariz desplazada a menor X.
+    validate_enroll_pose(_detection(130.0), EnrollPoseStep.LEFT)
     with pytest.raises(LivenessFailedError, match="izquierda"):
         validate_enroll_pose(_detection(150.0), EnrollPoseStep.LEFT)
 
 
 def test_validate_right_requires_turn():
-    validate_enroll_pose(_detection(130.0), EnrollPoseStep.RIGHT)
+    # Frame espejado: derecha del usuario → nariz desplazada a mayor X.
+    validate_enroll_pose(_detection(170.0), EnrollPoseStep.RIGHT)
     with pytest.raises(LivenessFailedError, match="derecha"):
         validate_enroll_pose(_detection(150.0), EnrollPoseStep.RIGHT)
 
 
 def test_validate_guided_sequence():
     validate_guided_enroll_poses(
-        [_detection(150.0), _detection(170.0), _detection(130.0)]
+        [_detection(150.0), _detection(130.0), _detection(170.0)]
     )
 
 

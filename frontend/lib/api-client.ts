@@ -1,3 +1,4 @@
+import { humanizeError } from "@/lib/errors";
 import type { ApiError } from "@/lib/types/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
@@ -21,14 +22,16 @@ export function clearToken(): void {
 function handleUnauthorized(): void {
   clearToken();
   if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-    window.location.href = "/login";
+    window.location.href = "/login?session=expired";
   }
 }
 
 function formatDetail(detail: unknown): string {
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) {
-    return detail
+  let raw: string;
+  if (typeof detail === "string") {
+    raw = detail;
+  } else if (Array.isArray(detail)) {
+    raw = detail
       .map((item) => {
         if (typeof item === "object" && item !== null && "msg" in item) {
           return String((item as { msg: string }).msg);
@@ -36,8 +39,17 @@ function formatDetail(detail: unknown): string {
         return String(item);
       })
       .join(". ");
+  } else {
+    raw = "Error desconocido";
   }
-  return "Error desconocido";
+  return humanizeError(raw);
+}
+
+export function formatApiError(
+  detail: string,
+  context?: "enroll" | "reception" | "general",
+): string {
+  return humanizeError(detail, context);
 }
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -54,10 +66,22 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers,
+    });
+  } catch (err) {
+    if (err instanceof TypeError) {
+      const error: ApiError = {
+        status: 0,
+        detail: "Sin conexión. Revisá tu internet e intentá de nuevo.",
+      };
+      throw error;
+    }
+    throw err;
+  }
 
   if (response.status === 401) {
     handleUnauthorized();

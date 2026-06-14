@@ -19,7 +19,11 @@ router = APIRouter(prefix="/gyms", tags=["users"])
 
 
 def _created_response(
-    user, link, gym_id: uuid.UUID
+    user,
+    link,
+    gym_id: uuid.UUID,
+    *,
+    temporary_password: str | None = None,
 ) -> UserCreatedResponse:
     return UserCreatedResponse(
         id=user.id,
@@ -31,6 +35,7 @@ def _created_response(
         is_active=user.is_active,
         biometric_consent_at=link.biometric_consent_at,
         created_at=user.created_at,
+        temporary_password=temporary_password,
     )
 
 
@@ -94,7 +99,7 @@ async def create_gym_user(
     _user, caller_link = ctx
     gym = await get_gym(db, gym_id)
 
-    new_user, new_link = await service.create_user_for_gym(
+    new_user, new_link, generated_password = await service.create_user_for_gym(
         db,
         gym=gym,
         caller_role=caller_link.role,
@@ -104,7 +109,12 @@ async def create_gym_user(
         document=body.document,
         kind_role=body.kind_role,
     )
-    return _created_response(new_user, new_link, gym.id)
+    return _created_response(
+        new_user,
+        new_link,
+        gym.id,
+        temporary_password=generated_password,
+    )
 
 
 @router.patch(

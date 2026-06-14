@@ -28,7 +28,11 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
+type Props = {
+  sessionExpired?: boolean;
+};
+
+export function LoginForm({ sessionExpired = false }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -41,16 +45,23 @@ export function LoginForm() {
     mutationFn: (values: LoginFormValues) => login(values.email, values.password),
     onSuccess: async () => {
       await queryClient.fetchQuery({ queryKey: ["auth", "me"], queryFn: getMe });
-      toast.success("Sesión iniciada");
       router.replace("/members");
     },
     onError: (error: ApiError) => {
-      toast.error(error.detail || "Credenciales inválidas");
+      toast.error(error.detail || "Credenciales inválidas", { duration: 12000 });
     },
   });
 
   return (
     <Form {...form}>
+      {sessionExpired && (
+        <div
+          role="alert"
+          className="mb-5 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-foreground"
+        >
+          Tu sesión expiró. Volvé a ingresar.
+        </div>
+      )}
       <form
         onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
         className="space-y-5"

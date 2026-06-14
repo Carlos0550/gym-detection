@@ -12,6 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatConfidence } from "@/lib/confidence";
+import { humanizeError } from "@/lib/errors";
 import { listAccessLogs } from "@/lib/api/access";
 
 type Props = {
@@ -22,7 +24,7 @@ const resultLabels: Record<string, string> = {
   granted: "Permitido",
   denied: "Denegado",
   unknown: "Sin coincidencia",
-  low_confidence: "Baja confianza",
+  low_confidence: "Coincidencia baja",
 };
 
 function ResultBadge({ result }: { result: string }) {
@@ -34,6 +36,17 @@ function ResultBadge({ result }: { result: string }) {
     return <Badge variant="warning">{label}</Badge>;
   }
   return <Badge variant="destructive">{label}</Badge>;
+}
+
+function ConfidenceCell({ confidence }: { confidence: number }) {
+  const { level, percent } = formatConfidence(confidence);
+
+  return (
+    <span>
+      <span className="font-medium">{level}</span>
+      <span className="ml-1 font-mono text-xs text-muted-2">({percent})</span>
+    </span>
+  );
 }
 
 function formatDate(iso: string) {
@@ -66,6 +79,16 @@ function UserCell({
   );
 }
 
+function formatDetail(detail: string | null, membershipStatus: string | null): string {
+  if (detail) {
+    return humanizeError(detail, "reception");
+  }
+  if (membershipStatus) {
+    return membershipStatus;
+  }
+  return "—";
+}
+
 export function AccessLogsTable({ gymId }: Props) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["access-logs", gymId],
@@ -94,10 +117,10 @@ export function AccessLogsTable({ gymId }: Props) {
         ]}
         title={
           <>
-            Registros de <span className="text-primary">acceso.</span>
+            Historial de <span className="text-primary">ingresos.</span>
           </>
         }
-        subtitle="Historial de verificaciones faciales en recepción. Filtrable y auditable."
+        subtitle="Registro de verificaciones faciales en recepción."
         meta={
           <span className="head-pill">
             <span className="h-1.5 w-1.5 rounded-full bg-success" />
@@ -113,7 +136,7 @@ export function AccessLogsTable({ gymId }: Props) {
               <TableHead>Fecha y hora</TableHead>
               <TableHead>Usuario</TableHead>
               <TableHead>Resultado</TableHead>
-              <TableHead>Confianza</TableHead>
+              <TableHead>Coincidencia</TableHead>
               <TableHead>Detalle</TableHead>
             </TableRow>
           </TableHeader>
@@ -151,15 +174,13 @@ export function AccessLogsTable({ gymId }: Props) {
                   </TableCell>
                   <TableCell>
                     {log.confidence != null ? (
-                      <span className="font-mono text-sm text-primary">
-                        {(log.confidence * 100).toFixed(1)}%
-                      </span>
+                      <ConfidenceCell confidence={log.confidence} />
                     ) : (
                       "—"
                     )}
                   </TableCell>
                   <TableCell className="max-w-xs truncate text-muted-foreground">
-                    {log.detail ?? log.membership_status ?? "—"}
+                    {formatDetail(log.detail, log.membership_status)}
                   </TableCell>
                 </TableRow>
               ))

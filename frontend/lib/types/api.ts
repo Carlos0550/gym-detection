@@ -50,9 +50,22 @@ export type GymClient = {
   created_at: string;
 };
 
-export type CreateGymUserPayload = {
+export type UserCreatedResponse = {
+  id: string;
   email: string;
-  password: string;
+  full_name: string;
+  document: string | null;
+  role: string;
+  gym_id: string;
+  is_active: boolean;
+  biometric_consent_at: string | null;
+  created_at: string;
+  temporary_password?: string | null;
+};
+
+export type CreateGymUserPayload = {
+  email?: string;
+  password?: string;
   full_name: string;
   document?: string;
   kind_role?: "client" | "manager";

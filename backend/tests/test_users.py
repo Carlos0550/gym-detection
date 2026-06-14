@@ -189,17 +189,18 @@ async def test_owner_cannot_create_owner_via_kind_role(
     assert response.status_code == 422
 
 
-async def test_create_gym_user_with_duplicate_email_returns_409(
+async def test_create_gym_user_duplicate_email_same_gym_returns_409(
     client: AsyncClient,
     owner_token: str,
     owner_link,
     gym: Gym,
-    superadmin_user: User,
+    client_user: User,
+    client_link,
 ):
     response = await client.post(
         f"/api/v1/gyms/{gym.id}/users",
         json={
-            "email": superadmin_user.email,
+            "email": client_user.email,
             "password": "newpass1234",
             "full_name": "Dup",
             "document": "30555555",
@@ -207,6 +208,50 @@ async def test_create_gym_user_with_duplicate_email_returns_409(
         headers=auth_headers(owner_token),
     )
     assert response.status_code == 409
+    assert "este gimnasio" in response.json()["detail"].lower()
+
+
+async def test_same_email_allowed_in_different_gym_links_existing_user(
+    client: AsyncClient,
+    owner_token: str,
+    owner_link,
+    gym: Gym,
+    client_user: User,
+    engine,
+    owner_user: User,
+):
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from app.models.enums import GymUserRole
+    from app.models.gym import Gym as GymModel
+    from app.models.gym_user import GymUser
+
+    factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
+    async with factory() as session:
+        other_gym = GymModel(name="Other Gym Email", address="X", phone="+5491100000003")
+        session.add(other_gym)
+        await session.flush()
+        session.add(
+            GymUser(gym_id=other_gym.id, user_id=owner_user.id, role=GymUserRole.OWNER)
+        )
+        await session.commit()
+        other_id = other_gym.id
+
+    response = await client.post(
+        f"/api/v1/gyms/{other_id}/users",
+        json={
+            "email": client_user.email,
+            "full_name": "Same Email Other Gym",
+            "document": "30555556",
+        },
+        headers=auth_headers(owner_token),
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["id"] == str(client_user.id)
+    assert data["email"] == client_user.email
+    assert data["gym_id"] == str(other_id)
+    assert data["temporary_password"] is None
 
 
 async def test_create_gym_user_normalizes_email(
@@ -290,19 +335,78 @@ async def test_new_user_can_login_and_see_membership(
     assert data["memberships"][0]["role"] == "client"
 
 
-async def test_client_requires_document(
+async def test_create_without_email_or_document_returns_422(
     client: AsyncClient, owner_token: str, owner_link, gym: Gym
 ):
     response = await client.post(
         f"/api/v1/gyms/{gym.id}/users",
         json={
-            "email": "nodni@example.com",
-            "password": "newpass1234",
-            "full_name": "No DNI",
+            "full_name": "Sin identificador",
         },
         headers=auth_headers(owner_token),
     )
-    assert response.status_code == 409
+    assert response.status_code == 422
+
+
+async def test_create_with_only_email(
+    client: AsyncClient, owner_token: str, owner_link, gym: Gym
+):
+    response = await client.post(
+        f"/api/v1/gyms/{gym.id}/users",
+        json={
+            "email": "onlyemail@example.com",
+            "full_name": "Solo Email",
+        },
+        headers=auth_headers(owner_token),
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["email"] == "onlyemail@example.com"
+    assert data["document"] is None
+
+
+async def test_create_with_only_document(
+    client: AsyncClient, owner_token: str, owner_link, gym: Gym
+):
+    response = await client.post(
+        f"/api/v1/gyms/{gym.id}/users",
+        json={
+            "full_name": "Solo DNI",
+            "document": "30999999",
+        },
+        headers=auth_headers(owner_token),
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["document"] == "30999999"
+    assert data["email"].endswith("@gym-detection.internal")
+
+
+async def test_create_auto_generates_password(
+    client: AsyncClient, owner_token: str, owner_link, gym: Gym
+):
+    response = await client.post(
+        f"/api/v1/gyms/{gym.id}/users",
+        json={
+            "email": "autopass@example.com",
+            "full_name": "Auto Pass",
+            "document": "30888888",
+        },
+        headers=auth_headers(owner_token),
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["temporary_password"]
+    assert len(data["temporary_password"]) >= 8
+
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "autopass@example.com",
+            "password": data["temporary_password"],
+        },
+    )
+    assert login.status_code == 200
 
 
 async def test_duplicate_document_same_gym_returns_409(

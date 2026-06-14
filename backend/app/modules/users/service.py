@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 import uuid
 from datetime import datetime, timezone
 
@@ -35,26 +36,103 @@ def _normalize_document(document: str | None) -> str | None:
     return cleaned or None
 
 
+def _normalize_email(email: str | None) -> str | None:
+    if email is None:
+        return None
+    cleaned = email.strip().lower()
+    return cleaned or None
+
+
+def generate_temporary_password() -> str:
+    return secrets.token_urlsafe(12)
+
+
+def _placeholder_email() -> str:
+    return f"noemail+{uuid.uuid4()}@gym-detection.internal"
+
+
+async def _get_user_by_email(db: AsyncSession, email: str) -> User | None:
+    result = await db.execute(select(User).where(User.email == email))
+    return result.scalar_one_or_none()
+
+
+async def _get_gym_user_link_for_user(
+    db: AsyncSession, gym_id: uuid.UUID, user_id: uuid.UUID
+) -> GymUser | None:
+    result = await db.execute(
+        select(GymUser).where(GymUser.gym_id == gym_id, GymUser.user_id == user_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _link_existing_user_to_gym(
+    db: AsyncSession,
+    *,
+    gym: Gym,
+    user: User,
+    role: GymUserRole,
+    document: str | None,
+) -> GymUser:
+    new_link = GymUser(
+        gym_id=gym.id,
+        user_id=user.id,
+        role=role,
+        document=document,
+    )
+    db.add(new_link)
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ConflictError(
+            "El documento ya está registrado en este gimnasio"
+        ) from exc
+    await db.refresh(user)
+    await db.refresh(new_link)
+    return new_link
+
+
 async def create_user_for_gym(
     db: AsyncSession,
     *,
     gym: Gym,
     caller_role: GymUserRole,
-    email: str,
-    password: str,
+    email: str | None,
+    password: str | None,
     full_name: str,
     document: str | None = None,
     kind_role: str | None = None,
-) -> tuple[User, GymUser]:
+) -> tuple[User, GymUser, str | None]:
     role = resolve_role_for_caller(caller_role, kind_role)
     normalized_document = _normalize_document(document)
+    normalized_email = _normalize_email(email)
 
-    if role == GymUserRole.CLIENT and not normalized_document:
-        raise ConflictError("El documento (DNI) es obligatorio para clientes")
+    if not normalized_email and not normalized_document:
+        raise ConflictError("Ingresá email o DNI para identificar al miembro")
+
+    if normalized_email:
+        existing_user = await _get_user_by_email(db, normalized_email)
+        if existing_user is not None:
+            if await _get_gym_user_link_for_user(db, gym.id, existing_user.id) is not None:
+                raise ConflictError("Este email ya está registrado en este gimnasio")
+            new_link = await _link_existing_user_to_gym(
+                db,
+                gym=gym,
+                user=existing_user,
+                role=role,
+                document=normalized_document,
+            )
+            return existing_user, new_link, None
+
+    resolved_email = normalized_email or _placeholder_email()
+    generated_password: str | None = None
+    if password is None:
+        password = generate_temporary_password()
+        generated_password = password
 
     new_user = User(
         id=uuid.uuid4(),
-        email=email.lower().strip(),
+        email=resolved_email,
         password_hash=hash_password(password),
         full_name=full_name.strip(),
         is_superadmin=False,
@@ -65,7 +143,7 @@ async def create_user_for_gym(
         await db.flush()
     except IntegrityError as exc:
         await db.rollback()
-        raise ConflictError("El email ya está registrado") from exc
+        raise ConflictError("Este email ya está registrado en este gimnasio") from exc
 
     new_link = GymUser(
         gym_id=gym.id,
@@ -85,7 +163,7 @@ async def create_user_for_gym(
 
     await db.refresh(new_user)
     await db.refresh(new_link)
-    return new_user, new_link
+    return new_user, new_link, generated_password
 
 
 def pick_active_membership(memberships: list[Membership]) -> Membership | None:

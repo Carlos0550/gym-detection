@@ -58,9 +58,10 @@ class MockFaceEngine:
         if pose_index == 0:
             nose_x = eye_center
         elif pose_index == 1:
-            nose_x = eye_center + 0.18 * eye_span
-        else:
+            # Frames espejados (selfie): izquierda del usuario → yaw negativo.
             nose_x = eye_center - 0.18 * eye_span
+        else:
+            nose_x = eye_center + 0.18 * eye_span
 
         kps = np.array(
             [

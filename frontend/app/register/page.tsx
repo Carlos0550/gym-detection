@@ -9,7 +9,7 @@ const benefits = [
     description: "Cámara siempre activa. Verificación automática en menos de un segundo.",
   },
   {
-    title: "Enrolamiento facial",
+    title: "Registro facial",
     description: "Guiado paso a paso, con feedback de luz, encuadre y calidad.",
   },
   {
@@ -21,12 +21,12 @@ const benefits = [
     description: "Tipos de plan, fechas de inicio, vencimientos y renovaciones.",
   },
   {
-    title: "Logs auditables",
+    title: "Historial de ingresos",
     description: "Cada intento de acceso, filtrable y exportable.",
   },
   {
-    title: "5 usuarios del staff",
-    description: "Recepción, owner, hasta 3 roles más. Después podés ampliar.",
+    title: "5 usuarios del equipo",
+    description: "Recepción, dueño del gimnasio, hasta 3 roles más. Después podés ampliar.",
   },
 ];
 
@@ -90,10 +90,10 @@ export default function RegisterPage() {
                   Lo que obtenés al registrarte
                 </p>
                 <h3 className="mt-2 text-lg font-semibold tracking-[-0.015em]">
-                  Todo el MVP activo, desde el primer día.
+                  Todas las funciones incluidas, desde el primer día.
                 </h3>
                 <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-                  Sin lock-in, sin letra chica, sin cobrarte de más por módulo.
+                  Sin letra chica, sin cobrarte de más por módulo.
                 </p>
                 <ul className="mt-5 space-y-4">
                   {benefits.map((item) => (
@@ -140,7 +140,7 @@ export default function RegisterPage() {
                 <div>
                   <h4 className="text-[13px] font-semibold">Tus datos están cifrados</h4>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    TLS 1.3 en tránsito · AES-256 en reposo. Servidores en la región que elijas al
+                    Conexión segura · Almacenamiento cifrado. Servidores en la región que elijas al
                     confirmar.
                   </p>
                 </div>

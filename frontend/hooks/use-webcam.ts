@@ -21,6 +21,33 @@ function isPlayInterrupted(err: unknown): boolean {
   );
 }
 
+function humanizeCameraError(err: unknown): string {
+  if (!(err instanceof Error)) {
+    return "No pudimos acceder a la cámara. Revisá los permisos del navegador e intentá de nuevo.";
+  }
+
+  switch (err.name) {
+    case "NotAllowedError":
+    case "PermissionDeniedError":
+      return "Necesitamos permiso para usar la cámara. Permitilo en el navegador y volvé a intentar.";
+    case "NotFoundError":
+    case "DevicesNotFoundError":
+      return "No encontramos ninguna cámara conectada. Conectá una cámara e intentá de nuevo.";
+    case "NotReadableError":
+    case "TrackStartError":
+      return "La cámara está en uso por otra aplicación. Cerrala e intentá de nuevo.";
+    case "OverconstrainedError":
+    case "ConstraintNotSatisfiedError":
+      return "La cámara no cumple los requisitos pedidos. Probá con otra cámara o navegador.";
+    case "SecurityError":
+      return "El navegador bloqueó el acceso a la cámara. Usá HTTPS o revisá los permisos del sitio.";
+    case "TypeError":
+      return "Tu navegador no soporta acceso a la cámara. Probá con Chrome, Firefox o Edge actualizados.";
+    default:
+      return "No pudimos acceder a la cámara. Revisá los permisos e intentá de nuevo.";
+  }
+}
+
 export function useWebcam(options: UseWebcamOptions = {}) {
   const { width = 640, height = 480, facingMode = "user", mirror = false } = options;
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -73,11 +100,7 @@ export function useWebcam(options: UseWebcamOptions = {}) {
       setStatus("active");
     } catch (err) {
       if (session !== startSessionRef.current) return;
-      const message =
-        err instanceof Error
-          ? err.message
-          : "No se pudo acceder a la cámara. Verificá los permisos.";
-      setError(message);
+      setError(humanizeCameraError(err));
       setStatus("error");
     }
   }, [width, height, facingMode, stop]);

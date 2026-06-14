@@ -7,6 +7,9 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { playAccessDeniedSound, playAccessGrantedSound } from "@/lib/access-sounds";
+import { formatConfidence } from "@/lib/confidence";
+import { humanizeError } from "@/lib/errors";
 import { verifyFace } from "@/lib/api/access";
 import type { ApiError, VerifyFaceResponse } from "@/lib/types/api";
 import { useWebcam } from "@/hooks/use-webcam";
@@ -18,12 +21,28 @@ type Props = {
 
 type VerifyState = "idle" | "verifying" | "result";
 
+function ConfidenceDisplay({ confidence }: { confidence: number }) {
+  const { level, percent } = formatConfidence(confidence);
+
+  return (
+    <p>
+      <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-2">
+        Coincidencia
+      </span>
+      <br />
+      <span className="text-lg font-semibold">{level}</span>
+      <span className="ml-1.5 font-mono text-xs text-muted-2">({percent})</span>
+    </p>
+  );
+}
+
 function ResultCard({ result }: { result: VerifyFaceResponse }) {
   const isGranted = result.access === "granted" && result.result === "granted";
   const isUnknown = result.result === "unknown";
   const isLiveness =
     result.reason?.toLowerCase().includes("vivacidad") ||
-    result.reason?.toLowerCase().includes("liveness");
+    result.reason?.toLowerCase().includes("liveness") ||
+    result.reason?.toLowerCase().includes("movimiento");
   const isLowConfidence = result.result === "low_confidence";
 
   let title = "Acceso denegado";
@@ -36,12 +55,16 @@ function ResultCard({ result }: { result: VerifyFaceResponse }) {
     title = "Sin coincidencia";
     variant = "warning";
   } else if (isLiveness) {
-    title = "Vivacidad fallida";
+    title = "Verificación en vivo fallida";
     variant = "warning";
   } else if (isLowConfidence) {
-    title = "Confianza insuficiente";
+    title = "Coincidencia insuficiente";
     variant = "warning";
   }
+
+  const reasonText = result.reason
+    ? humanizeError(result.reason, "reception")
+    : null;
 
   return (
     <Card
@@ -76,24 +99,14 @@ function ResultCard({ result }: { result: VerifyFaceResponse }) {
             {result.user.document ? ` · DNI ${result.user.document}` : ""}
           </p>
         )}
-        {result.confidence != null && (
-          <p>
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-2">
-              Confianza
-            </span>
-            <br />
-            <span className="font-mono text-lg text-primary">
-              {(result.confidence * 100).toFixed(1)}%
-            </span>
-          </p>
-        )}
-        {result.reason && (
+        {result.confidence != null && <ConfidenceDisplay confidence={result.confidence} />}
+        {reasonText && (
           <p className="text-muted-foreground">
             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-2">
               Motivo
             </span>
             <br />
-            {result.reason}
+            {reasonText}
           </p>
         )}
         {result.membership && (
@@ -101,6 +114,47 @@ function ResultCard({ result }: { result: VerifyFaceResponse }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function ResultPanel({
+  lastResult,
+  onClear,
+}: {
+  lastResult: VerifyFaceResponse | null;
+  onClear: () => void;
+}) {
+  return (
+    <div aria-live="polite" aria-atomic="true" className="space-y-3">
+      {lastResult ? (
+        <>
+          <ResultCard result={lastResult} />
+          <Button variant="outline" onClick={onClear} className="w-full">
+            Limpiar resultado
+          </Button>
+        </>
+      ) : (
+        <Card className="flex h-full min-h-[200px] items-center justify-center lg:min-h-[320px]">
+          <CardContent className="py-12 text-center">
+            <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl border border-border bg-surface-2 text-muted-2">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                className="h-6 w-6"
+                strokeWidth={1.5}
+              >
+                <path d="M9 12l2 2l4 -4" />
+                <circle cx="12" cy="12" r="9" />
+              </svg>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              El resultado de la verificación aparecerá aquí
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
 
@@ -122,22 +176,22 @@ export function ReceptionVerify({ gymId }: Props) {
     void start();
   }, [start]);
 
-  useEffect(() => {
-    if (!lastResult) return;
-
-    const timer = setTimeout(clearResult, 2000);
-    return () => clearTimeout(timer);
-  }, [clearResult, lastResult]);
-
   const mutation = useMutation({
     mutationFn: (frames: Blob[]) => verifyFace(gymId, frames),
     onSuccess: (data) => {
       setLastResult(data);
       setVerifyState("result");
+
+      const granted = data.access === "granted" && data.result === "granted";
+      if (granted) {
+        playAccessGrantedSound();
+      } else {
+        playAccessDeniedSound();
+      }
     },
     onError: (err: ApiError) => {
-      toast.error(err.detail);
-      setVerifyState("idle");
+      toast.error(err.detail, { duration: 12000 });
+      setVerifyState(lastResult ? "result" : "idle");
     },
     onSettled: () => {
       verifyingRef.current = false;
@@ -151,20 +205,22 @@ export function ReceptionVerify({ gymId }: Props) {
 
     const frames = await captureFrames(3, 250);
     if (frames.length < 2) {
-      toast.error("Se necesitan al menos 2 frames para verificar vivacidad");
-      setVerifyState("idle");
+      toast.error("Se necesitan al menos 2 fotos para verificar identidad", {
+        duration: 12000,
+      });
+      setVerifyState(lastResult ? "result" : "idle");
       verifyingRef.current = false;
       return;
     }
 
     mutation.mutate(frames);
-  }, [captureFrames, mutation, status]);
+  }, [captureFrames, lastResult, mutation, status]);
 
   useEffect(() => {
     if (!autoMode || status !== "active") return;
 
     const interval = setInterval(() => {
-      if (verifyState === "idle") {
+      if (verifyState !== "verifying") {
         void runVerify();
       }
     }, 5000);
@@ -185,7 +241,7 @@ export function ReceptionVerify({ gymId }: Props) {
             Recepción <span className="text-primary">en vivo.</span>
           </>
         }
-        subtitle="Verificación facial con detección de vivacidad (mín. 2 frames)."
+        subtitle="Verificá el acceso con la cámara de recepción. Se capturan 2 fotos por intento."
         meta={
           <span className="head-pill">
             <span
@@ -200,7 +256,11 @@ export function ReceptionVerify({ gymId }: Props) {
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <div className="order-1 space-y-3 lg:order-2">
+          <ResultPanel lastResult={lastResult} onClear={clearResult} />
+        </div>
+
+        <Card className="order-2 lg:order-1">
           <CardHeader>
             <div className="section-tag">En vivo</div>
             <CardTitle className="mt-2">Cámara de recepción</CardTitle>
@@ -224,7 +284,7 @@ export function ReceptionVerify({ gymId }: Props) {
               {status === "active" && verifyState !== "verifying" && (
                 <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
                   <span className="rounded-full border border-primary/30 bg-background/80 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-primary backdrop-blur-sm">
-                    Encuadre el rostro
+                    Encuadrá el rostro
                   </span>
                 </div>
               )}
@@ -239,42 +299,13 @@ export function ReceptionVerify({ gymId }: Props) {
               </Button>
               <Button
                 variant={autoMode ? "default" : "outline"}
-                onClick={() => {
-                  setAutoMode((v) => !v);
-                  clearResult();
-                }}
+                onClick={() => setAutoMode((v) => !v)}
               >
-                {autoMode ? "Modo automático ON" : "Modo automático OFF"}
+                {autoMode ? "Pausar escaneo" : "Escaneo continuo"}
               </Button>
             </div>
           </CardContent>
         </Card>
-
-        <div>
-          {lastResult ? (
-            <ResultCard result={lastResult} />
-          ) : (
-            <Card className="flex h-full min-h-[320px] items-center justify-center">
-              <CardContent className="py-12 text-center">
-                <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl border border-border bg-surface-2 text-muted-2">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    className="h-6 w-6"
-                    strokeWidth={1.5}
-                  >
-                    <path d="M9 12l2 2l4 -4" />
-                    <circle cx="12" cy="12" r="9" />
-                  </svg>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  El resultado de la verificación aparecerá aquí
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
       </div>
     </div>
   );

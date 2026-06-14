@@ -23,7 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <GymProvider>
           {children}
-          <Toaster richColors position="top-right" />
+          <Toaster />
         </GymProvider>
       </AuthProvider>
     </QueryClientProvider>
