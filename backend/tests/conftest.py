@@ -33,7 +33,10 @@ from app.models.base import Base
 from app.models.enums import GymUserRole
 from app.models.gym import Gym
 from app.models.gym_user import GymUser
+from app.models.membership import Membership
 from app.models.user import User
+from app.modules.face.dependencies import get_face_engine
+from tests.face_mock import MockFaceEngine
 
 TEST_DB_URL = "postgresql+asyncpg://gym:gym@postgres:5432/gym_test"
 
@@ -164,11 +167,64 @@ async def client_link(engine, gym: Gym, client_user: User) -> GymUser:
     factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
     async with factory() as session:
         link = GymUser(
-            gym_id=gym.id, user_id=client_user.id, role=GymUserRole.CLIENT
+            gym_id=gym.id,
+            user_id=client_user.id,
+            role=GymUserRole.CLIENT,
+            document="30123456",
         )
         session.add(link)
         await session.commit()
     return link
+
+
+@pytest_asyncio.fixture
+async def active_membership(engine, gym: Gym, client_link: GymUser) -> Membership:
+    from datetime import date
+
+    from app.models.enums import MembershipStatus
+
+    factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
+    async with factory() as session:
+        membership = Membership(
+            gym_user_id=client_link.id,
+            gym_id=gym.id,
+            user_id=client_link.user_id,
+            start_date=date(2020, 1, 1),
+            end_date=date(2099, 12, 31),
+            status=MembershipStatus.ACTIVE,
+        )
+        session.add(membership)
+        await session.commit()
+        await session.refresh(membership)
+    return membership
+
+
+@pytest_asyncio.fixture
+async def mock_face_engine() -> MockFaceEngine:
+    return MockFaceEngine()
+
+
+@pytest_asyncio.fixture
+async def client_with_face(client, mock_face_engine):
+    mock_face_engine.reset()
+    app.dependency_overrides[get_face_engine] = lambda: mock_face_engine
+    yield client
+    app.dependency_overrides.pop(get_face_engine, None)
+    mock_face_engine.reset()
+
+
+@pytest_asyncio.fixture
+async def consented_client_link(engine, client_link: GymUser) -> GymUser:
+    from datetime import datetime, timezone
+
+    factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
+    async with factory() as session:
+        result = await session.get(GymUser, client_link.id)
+        assert result is not None
+        result.biometric_consent_at = datetime.now(timezone.utc)
+        await session.commit()
+        await session.refresh(result)
+    return result
 
 
 @pytest_asyncio.fixture
@@ -221,3 +277,24 @@ async def client_token(client_user: User) -> str:
 
 def auth_headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
+
+
+def fake_jpeg(name: str = "frame.jpg") -> tuple[str, bytes, str]:
+    """Bytes mínimos válidos para pasar validación Pillow (1x1 JPEG)."""
+    from io import BytesIO
+
+    from PIL import Image
+
+    img = Image.new("RGB", (640, 640), color=(128, 128, 128))
+    buf = BytesIO()
+    img.save(buf, format="JPEG")
+    return (name, buf.getvalue(), "image/jpeg")
+
+
+def enroll_frames(image_name: str = "enroll.jpg") -> list[tuple[str, tuple[str, bytes, str]]]:
+    """Tres frames con nombres distintos para pasar liveness en tests."""
+    return [
+        ("frames", fake_jpeg(f"{image_name}-center.jpg")),
+        ("frames", fake_jpeg(f"{image_name}-left.jpg")),
+        ("frames", fake_jpeg("liveness-a.jpg")),
+    ]

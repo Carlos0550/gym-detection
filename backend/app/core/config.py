@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     face_min_face_size: int = 100
     face_min_det_score: float = 0.65
 
+    # ===== Ops =====
+    auto_migrate: bool = False
+
     # ===== Seed =====
     seed_superadmin_email: str = "admin@example.com"
     seed_superadmin_password: str = "changeme-123"

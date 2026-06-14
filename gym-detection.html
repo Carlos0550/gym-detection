@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="es-AR"><head><script data-od-sandbox-shim>(function(){
+  function makeStore(){
+    var data = {};
+    var api = {
+      getItem: function(k){ return Object.prototype.hasOwnProperty.call(data, k) ? data[k] : null; },
+      setItem: function(k, v){ data[k] = String(v); },
+      removeItem: function(k){ delete data[k]; },
+      clear: function(){ data = {}; },
+      key: function(i){ return Object.keys(data)[i] || null; }
+    };
+    Object.defineProperty(api, 'length', { get: function(){ return Object.keys(data).length; } });
+    return api;
+  }
+  function tryShim(name){
+    var works = false;
+    try { works = !!window[name] && typeof window[name].getItem === 'function'; void window[name].length; }
+    catch (_) { works = false; }
+    if (works) return;
+    try { Object.defineProperty(window, name, { configurable: true, value: makeStore() }); }
+    catch (_) { try { window[name] = makeStore(); } catch (__) {} }
+  }
+  tryShim('localStorage');
+  tryShim('sessionStorage');
+  document.addEventListener('click', (e) => {
+    if (!e.target || !(e.target instanceof Element)) return;
+    var link = e.target.closest('a[href]');
+    if (!link) return;
+    var href = link.getAttribute('href');
+    if (href === null) return;
+    var isAnchor = href.startsWith('#') || href === '';
+    if (isAnchor) {
+      e.preventDefault();
+      if (href === '' || href === '#') {
+        window.scrollTo({ top: 0 });
+        history.replaceState(null, '', ' ');
+      } else {
+        var targetId = href.slice(1);
+        var target = targetId ? document.getElementById(targetId) : null;
+        if (target) {
+          target.scrollIntoView();
+          location.hash === href && history.replaceState(null, '', ' ');
+          location.hash = href;
+        }
+      }
+    } else if (link.getAttribute('target') === '_blank') {
+      e.preventDefault();
+      let safe = false;
+      try {
+        var url = new URL(href, location.href);
+        safe =
+          url.protocol === 'http:' ||
+          url.protocol === 'https:' ||
+          url.protocol === 'mailto:';
+      } catch (_) {}
+      safe && window.open(href, '_blank', 'noopener,noreferrer');
+    }
+  });
+})();</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1440">
+  <title>Verifica · Crear cuenta</title>
+  <style>
+    :root {
+      --bg: #09090B; --surface: #111113; --surface-2: #18181B; --surface-3: #1F1F23;
+      --border: #27272A; --border-strong: #3F3F46;
+      --fg: #FAFAFA; --muted: #A1A1AA; --muted-2: #71717A;
+      --accent: #FACC15; --accent-hover: #EAB308;
+      --accent-soft: rgba(250, 204, 21, 0.10);
+      --accent-line: rgba(250, 204, 21, 0.28);
+      --success: #22C55E; --success-soft: rgba(34, 197, 94, 0.10);
+      --danger: #EF4444; --danger-soft: rgba(239, 68, 68, 0.10);
+      --warning: #F59E0B; --info: #38BDF8;
+      --r-sm: 6px; --r: 8px; --r-lg: 12px; --r-xl: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg); color: var(--fg);
+      font: 14px/1.5 'Inter', -apple-system, 'SF Pro Text', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 0 40px; }
+
+    /* Public nav (shared) */
+    .pub-nav {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(9, 9, 11, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .pub-nav-inner { height: 64px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-mark {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: var(--accent); color: #09090B;
+      display: grid; place-items: center; font-weight: 700; font-size: 14px;
+      letter-spacing: -0.02em;
+    }
+    .brand-name { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+    .pub-links { display: flex; gap: 32px; }
+    .pub-links a { font-size: 13px; color: var(--muted); }
+    .pub-links a:hover { color: var(--fg); }
+    .pub-cta { display: flex; align-items: center; gap: 8px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 16px; border-radius: var(--r);
+      font-size: 13px; font-weight: 500; letter-spacing: -0.01em;
+      border: 1px solid transparent; transition: all 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: #09090B; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-ghost { background: var(--surface-2); border-color: var(--border); color: var(--fg); }
+    .btn-ghost:hover { border-color: var(--border-strong); background: var(--surface-3); }
+    .btn-link { padding: 10px 4px; color: var(--muted); }
+    .btn-link:hover { color: var(--fg); }
+    .link { color: var(--accent); }
+    .link:hover { color: var(--accent-hover); }
+
+    /* Page header */
+    .page-head { padding: 64px 0 32px; }
+    .head-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 48px; align-items: end; }
+    .breadcrumb {
+      display: flex; align-items: center; gap: 10px;
+      font: 11px 'JetBrains Mono', monospace; letter-spacing: 0.10em; text-transform: uppercase;
+      color: var(--muted-2); margin-bottom: 16px;
+    }
+    .breadcrumb a { color: var(--muted-2); }
+    .breadcrumb a:hover { color: var(--fg); }
+    .breadcrumb .sep { color: var(--border-strong); }
+    .page-h1 { font-size: 44px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.05; }
+    .page-h1 .accent { color: var(--accent); }
+    .page-sub { margin-top: 14px; font-size: 15px; color: var(--muted); max-width: 540px; line-height: 1.55; }
+    .head-meta {
+      display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+    }
+    .head-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 7px 12px; border: 1px solid var(--border);
+      background: var(--surface); border-radius: 999px;
+      font: 11px 'JetBrains Mono', monospace; color: var(--muted);
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .head-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+    /* Body grid */
+    .body { padding: 0 0 120px; }
+    .body-grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 48px; align-items: start; }
+
+    /* Stepper */
+    .stepper {
+      display: flex; gap: 24px; padding: 16px 0 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .step-item { display: flex; align-items: center; gap: 12px; }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); display: grid; place-items: center;
+      font: 12px 'JetBrains Mono', monospace; font-weight: 600;
+    }
+    .step-item.active .step-num { background: var(--accent); color: #09090B; border-color: var(--accent); }
+    .step-item.done .step-num { background: var(--success); color: #09090B; border-color: var(--success); }
+    .step-text { display: flex; flex-direction: column; gap: 1px; }
+    .step-text .t { font-size: 13px; font-weight: 500; color: var(--muted); }
+    .step-text .s { font: 10px 'JetBrains Mono', monospace; color: var(--muted-2); letter-spacing: 0.08em; text-transform: uppercase; }
+    .step-item.active .step-text .t, .step-item.active .step-text .s { color: var(--fg); }
+    .step-item.active .step-text .s { color: var(--accent); }
+    .step-divider { flex: 1; height: 1px; background: var(--border); align-self: center; max-width: 60px; }
+
+    /* Form card */
+    .form-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 32px; margin-top: 24px;
+    }
+    .form-section { padding: 28px 0; border-bottom: 1px solid var(--border); }
+    .form-section:first-of-type { padding-top: 8px; }
+    .form-section:last-of-type { border-bottom: 0; padding-bottom: 8px; }
+    .section-head { margin-bottom: 22px; }
+    .section-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      font: 10px 'JetBrains Mono', monospace; letter-spacing: 0.10em; text-transform: uppercase;
+      color: var(--accent);
+    }
+    .section-tag::before {
+      content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+    }
+    .section-h { margin-top: 10px; font-size: 19px; font-weight: 600; letter-spacing: -0.015em; }
+    .section-sub { margin-top: 6px; font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 520px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label {
+      font: 11px 'JetBrains Mono', monospace; letter-spacing: 0.06em;
+      color: var(--muted); text-transform: uppercase;
+    }
+    .field label .req { color: var(--accent); }
+    .field .hint { font-size: 11.5px; color: var(--muted-2); margin-top: 2px; }
+
+    .input {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 12px 14px; color: var(--fg); font: 14px 'Inter', sans-serif;
+      outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+      width: 100%;
+    }
+    .input::placeholder { color: var(--muted-2); }
+    .input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .input.has-icon { padding-left: 40px; }
+    .input-wrap { position: relative; }
+    .input-icon {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--muted-2); pointer-events: none;
+    }
+    .input-icon svg { width: 16px; height: 16px; stroke-width: 1.6; }
+    .input-trailing {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      padding: 6px 10px; border-radius: 6px; color: var(--muted-2);
+      font: 11px 'JetBrains Mono', monospace; letter-spacing: 0.06em;
+    }
+    .input-trailing:hover { color: var(--fg); background: var(--surface); }
+
+    select.input {
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A1A1AA' stroke-width='1.6'><path d='M6 9l6 6l6 -6'/></svg>");
+      background-repeat: no-repeat; background-position: right 12px center;
+      padding-right: 36px;
+    }
+
+    .pw-strength { display: flex; gap: 4px; margin-top: 8px; }
+    .pw-bar {
+      flex: 1; height: 3px; background: var(--border); border-radius: 2px;
+      transition: background 0.2s;
+    }
+    .pw-bar.on { background: var(--success); }
+    .pw-bar.on.mid { background: var(--warning); }
+    .pw-bar.on.weak { background: var(--danger); }
+    .pw-label {
+      margin-top: 6px; display: flex; align-items: center; justify-content: space-between;
+      font: 10px 'JetBrains Mono', monospace; color: var(--muted-2);
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .pw-label .ok { color: var(--success); }
+
+    /* Terms */
+    .terms { display: flex; flex-direction: column; gap: 12px; }
+    .term {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 14px; background: var(--surface-2);
+      border: 1px solid var(--border); border-radius: var(--r);
+    }
+    .term-box {
+      width: 18px; height: 18px; border-radius: 4px;
+      border: 1.5px solid var(--border-strong);
+      background: var(--bg);
+      display: grid; place-items: center;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .term-box.checked { background: var(--accent); border-color: var(--accent); }
+    .term-box.checked svg { display: block; }
+    .term-box svg { display: none; width: 12px; height: 12px; color: #09090B; stroke-width: 3; }
+    .term-text { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+    .term-text strong { color: var(--fg); font-weight: 500; }
+    .term-text a { color: var(--accent); }
+    .term-text a:hover { color: var(--accent-hover); }
+
+    .form-foot { margin-top: 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .form-foot .left { font-size: 12px; color: var(--muted-2); }
+    .form-foot .left a { color: var(--muted); }
+    .form-foot .left a:hover { color: var(--fg); }
+    .btn-submit {
+      background: var(--accent); color: #09090B;
+      padding: 14px 24px; font-size: 14px; font-weight: 600;
+      letter-spacing: -0.01em; border-radius: var(--r);
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-submit:hover { background: var(--accent-hover); }
+    .btn-submit:disabled { background: var(--surface-3); color: var(--muted-2); cursor: not-allowed; }
+
+    /* Sidebar */
+    .side { position: sticky; top: 96px; }
+    .side-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 28px;
+    }
+    .side-h {
+      display: flex; align-items: center; gap: 10px;
+      font: 11px 'JetBrains Mono', monospace; letter-spacing: 0.10em; text-transform: uppercase;
+      color: var(--accent);
+    }
+    .side-h::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+    .side-title { margin-top: 10px; font-size: 18px; font-weight: 600; letter-spacing: -0.015em; }
+    .side-sub { margin-top: 6px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+    .ben-list { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .ben {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 13px;
+    }
+    .ben-ic {
+      width: 18px; height: 18px; flex-shrink: 0; border-radius: 5px;
+      background: var(--success-soft); color: var(--success);
+      display: grid; place-items: center; margin-top: 1px;
+    }
+    .ben-ic svg { width: 11px; height: 11px; stroke-width: 2.6; }
+    .ben strong { color: var(--fg); font-weight: 500; }
+    .ben span { color: var(--muted); }
+    .side-foot { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+    .side-foot .row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+    .side-foot .row svg { color: var(--success); flex-shrink: 0; }
+
+    .trust-card {
+      margin-top: 16px; padding: 20px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .trust-ic {
+      width: 36px; height: 36px; flex-shrink: 0; border-radius: 8px;
+      background: var(--accent-soft); border: 1px solid var(--accent-line);
+      display: grid; place-items: center; color: var(--accent);
+    }
+    .trust-ic svg { width: 18px; height: 18px; stroke-width: 1.6; }
+    .trust-text h4 { font-size: 13px; font-weight: 600; }
+    .trust-text p { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--border); padding: 36px 0 28px; }
+    .foot-bottom {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 12px; color: var(--muted-2);
+    }
+    .foot-bottom .mono { font: 10px 'JetBrains Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+  </style>
+<style data-od-tweaks-bridge-style>
+[data-od-tweaks-hidden] .tw-panel {
+  transform: translateX(calc(100% + 32px)) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.tw-restore { display: none !important; }
+</style><script data-od-tweaks-bridge>(function(){
+  // Synchronously hide BEFORE the artifact body parses so the panel never
+  // flashes on initial paint. The host removes the attribute via postMessage
+  // once it knows the desired state.
+  document.documentElement.setAttribute('data-od-tweaks-hidden', '');
+
+  var suppressEcho = false;
+  var observer = null;
+
+  function panelEl(){ return document.querySelector('.tw-panel'); }
+
+  function applyClassesToPanel(visible){
+    var panel = panelEl();
+    if (panel) panel.classList.toggle('tw-hidden', !visible);
+  }
+
+  function setPanelVisible(visible){
+    suppressEcho = true;
+    document.documentElement.toggleAttribute('data-od-tweaks-hidden', !visible);
+    applyClassesToPanel(visible);
+    // Clear flag after the MutationObserver has had a chance to fire for this
+    // change so we don't echo our own host-driven toggles back to the host.
+    Promise.resolve().then(function(){ suppressEcho = false; });
+  }
+
+  function postState(){
+    var panel = panelEl();
+    if (!panel) return;
+    try {
+      parent.postMessage({
+        type: 'od:tweaks-panel-state',
+        visible: !panel.classList.contains('tw-hidden'),
+      }, '*');
+    } catch (e) {}
+  }
+
+  function postAvailability(){
+    try {
+      parent.postMessage({
+        type: 'od:tweaks-available',
+        available: !!panelEl(),
+      }, '*');
+    } catch (e) {}
+  }
+
+  function attachObserver(){
+    var panel = panelEl();
+    if (!panel || observer) return;
+    observer = new MutationObserver(function(){
+      if (suppressEcho) return;
+      postState();
+    });
+    observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  function onReady(){
+    // Capture the panel authored visibility BEFORE we apply the host hidden
+    // attribute. The bridge sets data-od-tweaks-hidden synchronously in head
+    // (before the body parses), so on entry to onReady the attribute is
+    // always present even though the artifact may have authored the panel
+    // as default-visible. Reading the panel class first is the only place
+    // we can still observe the author intent. Then drive the attribute,
+    // classes, and posted state from that captured value so a default
+    // visible tw-panel reports visible:true and the toolbar toggle starts
+    // ON. Issue surfaced in PR #1643 review.
+    var panel = panelEl();
+    var initialVisible = !!panel && !panel.classList.contains('tw-hidden');
+    document.documentElement.toggleAttribute('data-od-tweaks-hidden', !initialVisible);
+    applyClassesToPanel(initialVisible);
+    attachObserver();
+    postAvailability();
+    // Post the captured initial visibility so the toolbar toggle reflects
+    // the default state on mount. Without this the toggle reads OFF while
+    // a default-visible tw-panel artifact clearly shows its panel and the
+    // user would have to click toggle-on then toggle-off to actually hide.
+    postState();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', onReady);
+  } else {
+    onReady();
+  }
+
+  window.addEventListener('message', function(ev){
+    if (!ev.data || ev.data.type !== 'od:tweaks-panel-visible') return;
+    setPanelVisible(!!ev.data.visible);
+  });
+})();</script></head>
+<body>
+
+  <!-- ========== Public nav ========== -->
+  <header class="pub-nav" data-od-id="path-0">
+    <div class="wrap pub-nav-inner" data-od-id="path-0-0">
+      <a href="landing.html" class="brand" data-od-id="path-0-0-0">
+        <div class="brand-mark">V</div>
+        <div class="brand-name">Verifica</div>
+      </a>
+      <nav class="pub-links" data-od-id="path-0-0-1">
+        <a href="landing.html#funcionalidades" data-od-id="path-0-0-1-0">Funcionalidades</a>
+        <a href="landing.html#modulos" data-od-id="path-0-0-1-1">Módulos</a>
+        <a href="landing.html#seguridad" data-od-id="path-0-0-1-2">Seguridad</a>
+        <a href="landing.html#precios" data-od-id="path-0-0-1-3">Precios</a>
+        <a href="landing.html#faq" data-od-id="path-0-0-1-4">FAQ</a>
+      </nav>
+      <div class="pub-cta">
+        <a class="btn-link" href="login.html" data-od-id="path-0-0-2-0">Ya tenés cuenta?</a>
+        <a class="btn btn-ghost" href="login.html" data-od-id="path-0-0-2-1">Ingresar</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== Page head ========== -->
+  <section class="page-head" data-od-id="path-1">
+    <div class="wrap" data-od-id="path-1-0">
+      <div class="head-grid">
+        <div>
+          <nav class="breadcrumb" data-od-id="path-1-0-0-0-0">
+            <a href="landing.html" data-od-id="path-1-0-0-0-0-0">Verifica</a>
+            <span class="sep">/</span>
+            <a href="landing.html#precios" data-od-id="path-1-0-0-0-0-2">Planes</a>
+            <span class="sep">/</span>
+            <span>Crear cuenta</span>
+          </nav>
+          <h1 class="page-h1" data-od-id="path-1-0-0-0-1">Creá tu cuenta de <span class="accent">Verifica.</span></h1>
+          <p class="page-sub">Empezás con 14 días gratis, con todos los módulos activos. Después, US$ 79 por mes por sede — sin contratos, sin sorpresas.</p>
+        </div>
+        <div class="head-meta">
+          <span class="head-pill"><span class="dot"></span>Activación inmediata</span>
+          <span class="head-pill">2 / 2 pasos</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== Body ========== -->
+  <section class="body" data-od-id="path-2">
+    <div class="wrap" data-od-id="path-2-0">
+      <div class="body-grid">
+
+        <!-- ========== Left: form ========== -->
+        <div>
+          <div class="stepper">
+            <div class="step-item done">
+              <div class="step-num">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"></path></svg>
+              </div>
+              <div class="step-text"><div class="t">Tu gimnasio</div><div class="s">Paso 01 · listo</div></div>
+            </div>
+            <div class="step-divider"></div>
+            <div class="step-item active">
+              <div class="step-num">2</div>
+              <div class="step-text"><div class="t">Tu cuenta</div><div class="s">Paso 02 · en curso</div></div>
+            </div>
+          </div>
+
+          <form class="form-card" onsubmit="return false">
+
+            <!-- Section 1: Tu gimnasio -->
+            <div class="form-section">
+              <div class="section-head">
+                <div class="section-tag">Paso 01 · Gimnasio</div>
+                <div class="section-h">Datos del gimnasio</div>
+                <div class="section-sub">Esta información se muestra en la barra lateral del panel y se usa para generar el encabezado de los reportes.</div>
+              </div>
+              <div class="grid-2">
+                <div class="field">
+                  <label>Nombre del gimnasio <span class="req">*</span></label>
+                  <input class="input" type="text" value="ForceFit Club">
+                </div>
+                <div class="field">
+                  <label>Tipo de gimnasio <span class="req">*</span></label>
+                  <select class="input">
+                    <option>Musculación</option>
+                    <option>Crossfit / Funcional</option>
+                    <option>Boutique premium</option>
+                    <option>Wellness club</option>
+                    <option>Otro</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid-2" style="margin-top:16px">
+                <div class="field">
+                  <label>Ciudad <span class="req">*</span></label>
+                  <input class="input" type="text" value="Buenos Aires">
+                </div>
+                <div class="field">
+                  <label>País <span class="req">*</span></label>
+                  <select class="input">
+                    <option>Argentina</option>
+                    <option>Uruguay</option>
+                    <option>Chile</option>
+                    <option>México</option>
+                    <option>España</option>
+                    <option>Otro</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid-3" style="margin-top:16px">
+                <div class="field">
+                  <label>Cantidad de miembros</label>
+                  <select class="input">
+                    <option>Menos de 100</option>
+                    <option>100 – 300</option>
+                    <option>300 – 800</option>
+                    <option>800 – 2.000</option>
+                    <option>Más de 2.000</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Tel. del gimnasio</label>
+                  <input class="input" type="tel" placeholder="+54 11 5555 0000">
+                </div>
+                <div class="field">
+                  <label>Sitio web (opcional)</label>
+                  <input class="input" type="url" placeholder="forcefit.com">
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: Tu cuenta -->
+            <div class="form-section">
+              <div class="section-head">
+                <div class="section-tag">Paso 02 · Cuenta</div>
+                <div class="section-h">Tu cuenta de owner</div>
+                <div class="section-sub">Vas a ser el administrador principal. Después vas a poder invitar al staff desde Configuración → Usuarios.</div>
+              </div>
+              <div class="grid-2">
+                <div class="field">
+                  <label>Nombre <span class="req">*</span></label>
+                  <input class="input" type="text" value="Mariano">
+                </div>
+                <div class="field">
+                  <label>Apellido <span class="req">*</span></label>
+                  <input class="input" type="text" value="Ortiz">
+                </div>
+              </div>
+              <div class="grid-2" style="margin-top:16px">
+                <div class="field">
+                  <label>Email (será tu usuario) <span class="req">*</span></label>
+                  <div class="input-wrap">
+                    <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6l9 -6"></path></svg></span>
+                    <input class="input has-icon" type="email" value="marianortiz@forcefit.com">
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Teléfono de contacto <span class="req">*</span></label>
+                  <div class="input-wrap">
+                    <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 4h4l2 5l-3 2a12 12 0 0 0 5 5l2 -3l5 2v4a2 2 0 0 1 -2 2A17 17 0 0 1 3 6a2 2 0 0 1 2 -2"></path></svg></span>
+                    <input class="input has-icon" type="tel" value="+54 11 5555 1234">
+                  </div>
+                </div>
+              </div>
+              <div class="grid-2" style="margin-top:16px">
+                <div class="field">
+                  <label>Contraseña <span class="req">*</span></label>
+                  <input class="input" type="password" value="Verifica.2026">
+                  <div class="pw-strength">
+                    <div class="pw-bar on"></div>
+                    <div class="pw-bar on"></div>
+                    <div class="pw-bar on"></div>
+                    <div class="pw-bar on"></div>
+                    <div class="pw-bar"></div>
+                  </div>
+                  <div class="pw-label">
+                    <span>Seguridad</span>
+                    <span class="ok">Fuerte</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Confirmar contraseña <span class="req">*</span></label>
+                  <input class="input" type="password" value="Verifica.2026">
+                  <div class="hint" style="color:var(--success)">Coincide</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 3: Términos -->
+            <div class="form-section">
+              <div class="section-head">
+                <div class="section-tag">Paso 03 · Términos</div>
+                <div class="section-h">Consentimientos</div>
+                <div class="section-sub">Necesitamos tu OK explícito en dos puntos. Los podés revocar cuando quieras desde Configuración.</div>
+              </div>
+              <div class="terms">
+                <div class="term">
+                  <div class="term-box checked">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"></path></svg>
+                  </div>
+                  <div class="term-text">
+                    Acepto los <a href="#" data-od-id="path-2-0-0-0-1-2-1-0-1-0">Términos de servicio</a> y la <a href="#" data-od-id="path-2-0-0-0-1-2-1-0-1-1">Política de privacidad</a> de Verifica. Entiendo que el plan arranca con 14 días gratis y que, si no lo cancelo, pasa a US$ 79/mes por sede.
+                  </div>
+                </div>
+                <div class="term">
+                  <div class="term-box checked">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"></path></svg>
+                  </div>
+                  <div class="term-text">
+                    <strong>Consentimiento biométrico.</strong> Entiendo que Verifica va a almacenar embeddings cifrados de los rostros de mis miembros, y que cada uno deberá firmar su propio consentimiento antes de enrolarse. Configuré la política de retención en <a href="#" data-od-id="path-2-0-0-0-1-2-1-1-1-1">90 días</a> por defecto.
+                  </div>
+                </div>
+                <div class="term">
+                  <div class="term-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"></path></svg>
+                  </div>
+                  <div class="term-text">
+                    Quiero recibir novedades del producto y un email mensual con el resumen de accesos de mi gimnasio. (Opcional.)
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-foot">
+                <div class="left">
+                  ¿Ya tenés cuenta? <a href="login.html" data-od-id="path-2-0-0-0-1-2-2-0-0">Ingresá</a>
+                </div>
+                <button class="btn-submit" type="submit" data-od-id="path-2-0-0-0-1-2-2-1">
+                  Crear cuenta
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 5l7 7l-7 7"></path></svg>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- ========== Right: sidebar ========== -->
+        <aside class="side" data-od-id="path-2-0-0-1">
+          <div class="side-card" data-od-id="path-2-0-0-1-0">
+            <div class="side-h">Lo que obtenés al registrarte</div>
+            <div class="side-title">Todo el MVP activo, desde el primer día.</div>
+            <div class="side-sub">Sin lock-in, sin letra chica, sin cobrarte de más por módulo.</div>
+
+            <div class="ben-list">
+              <div class="ben">
+                <div class="ben-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"></path></svg></div>
+                <div><strong>Recepción en vivo</strong><br><span>Cámara siempre activa. Verificación automática en menos de un segundo.</span></div>
+              </div>
+              <div class="ben">
+                <div class="ben-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"></path></svg></div>
+                <div><strong>Enrolamiento facial</strong><br><span>Guiado paso a paso, con feedback de luz, encuadre y calidad.</span></div>
+              </div>
+              <div class="ben">
+                <div class="ben-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"></path></svg></div>
+                <div><strong>Gestión de miembros</strong><br><span>Miembros ilimitados durante la prueba. Después, también.</span></div>
+              </div>
+              <div class="ben">
+                <div class="ben-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"></path></svg></div>
+                <div><strong>Membresías y planes</strong><br><span>Tipos de plan, fechas de inicio, vencimientos y renovaciones.</span></div>
+              </div>
+              <div class="ben">
+                <div class="ben-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"></path></svg></div>
+                <div><strong>Logs auditables</strong><br><span>Cada intento de acceso, filtrable y exportable.</span></div>
+              </div>
+              <div class="ben">
+                <div class="ben-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"></path></svg></div>
+                <div><strong>5 usuarios del staff</strong><br><span>Recepción, owner, hasta 3 roles más. Después podés ampliar.</span></div>
+              </div>
+            </div>
+
+            <div class="side-foot">
+              <div class="row">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"></path></svg>
+                Activación inmediata al confirmar
+              </div>
+              <div class="row">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"></path></svg>
+                Onboarding guiado paso a paso
+              </div>
+              <div class="row">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"></path></svg>
+                Soporte por email en horario comercial
+              </div>
+            </div>
+          </div>
+
+          <div class="trust-card" data-od-id="path-2-0-0-1-1">
+            <div class="trust-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+            </div>
+            <div class="trust-text">
+              <h4 data-od-id="path-2-0-0-1-1-1-0">Tus datos están cifrados</h4>
+              <p>TLS 1.3 en tránsito · AES-256 en reposo. Servidores en la región que elijas al confirmar.</p>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== Footer ========== -->
+  <footer data-od-id="path-3">
+    <div class="wrap foot-bottom" data-od-id="path-3-0">
+      <div>© 2026 Verifica · Tus datos biométricos nunca salen de tu región.</div>
+      <div class="mono">Pública · /register</div>
+    </div>
+  </footer>
+
+
+
+<script data-od-snapshot-bridge>(function(){
+  var SNAPSHOT_STYLE_PROPS = [
+    'display','position','box-sizing','width','height','min-width','max-width','min-height','max-height',
+    'margin','margin-top','margin-right','margin-bottom','margin-left',
+    'padding','padding-top','padding-right','padding-bottom','padding-left',
+    'border','border-top','border-right','border-bottom','border-left','border-radius',
+    'font','font-family','font-size','font-weight','font-style','line-height','letter-spacing',
+    'color','background-color','opacity','transform','transform-origin','overflow','overflow-x','overflow-y',
+    'white-space','text-align','vertical-align','object-fit','object-position',
+    'flex','flex-direction','flex-wrap','flex-grow','flex-shrink','flex-basis',
+    'grid','grid-template-columns','grid-template-rows','grid-column','grid-row',
+    'gap','row-gap','column-gap','align-items','align-content','align-self',
+    'justify-items','justify-content','justify-self','inset','top','right','bottom','left',
+    'z-index','box-shadow','text-shadow'
+  ];
+  function copyComputedStyle(source, target){
+    if (!source || !target || source.nodeType !== 1 || target.nodeType !== 1) return;
+    var computed = window.getComputedStyle(source);
+    var style = target.getAttribute('style') || '';
+    for (var i = 0; i < SNAPSHOT_STYLE_PROPS.length; i++){
+      var prop = SNAPSHOT_STYLE_PROPS[i];
+      var value = computed.getPropertyValue(prop);
+      if (value) style += prop + ':' + value + ';';
+    }
+    target.setAttribute('style', style);
+  }
+  function syncElementState(source, target){
+    var tag = source.tagName ? source.tagName.toLowerCase() : '';
+    if (tag === 'img' && source.currentSrc) target.setAttribute('src', source.currentSrc);
+    if (tag === 'input' || tag === 'textarea') target.setAttribute('value', source.value || '');
+    if (tag === 'canvas') {
+      try {
+        var img = document.createElement('img');
+        img.setAttribute('src', source.toDataURL('image/png'));
+        img.setAttribute('style', target.getAttribute('style') || '');
+        target.parentNode && target.parentNode.replaceChild(img, target);
+      } catch (_) {}
+    }
+  }
+  function inlineSnapshotStyles(originalRoot, cloneRoot){
+    copyComputedStyle(originalRoot, cloneRoot);
+    syncElementState(originalRoot, cloneRoot);
+    var originals = originalRoot.querySelectorAll('*');
+    var clones = cloneRoot.querySelectorAll('*');
+    var count = Math.min(originals.length, clones.length, 3500);
+    for (var i = 0; i < count; i++){
+      copyComputedStyle(originals[i], clones[i]);
+      syncElementState(originals[i], clones[i]);
+    }
+    var scripts = cloneRoot.querySelectorAll('script');
+    for (var s = scripts.length - 1; s >= 0; s--) scripts[s].remove();
+    var links = cloneRoot.querySelectorAll('link[rel~="stylesheet"], link[rel~="preload"], link[rel~="preconnect"]');
+    for (var l = links.length - 1; l >= 0; l--) links[l].remove();
+    var styles = cloneRoot.querySelectorAll('style');
+    for (var st = 0; st < styles.length; st++) {
+      styles[st].textContent = (styles[st].textContent || '')
+        .replace(/@import[^;]+;/gi, '')
+        .replace(/@font-face\s*\{[^}]*\}/gi, '');
+    }
+  }
+  function pruneHiddenSnapshotNodes(originalRoot, cloneRoot){
+    var originals = originalRoot.querySelectorAll('*');
+    var clones = cloneRoot.querySelectorAll('*');
+    var count = Math.min(originals.length, clones.length);
+    var removals = [];
+    for (var i = 0; i < count; i++){
+      var original = originals[i];
+      var clone = clones[i];
+      if (!original || !clone || !clone.parentNode) continue;
+      var computed = window.getComputedStyle(original);
+      if (computed && (computed.display === 'none' || computed.visibility === 'hidden')) {
+        removals.push(clone);
+      }
+    }
+    for (var r = removals.length - 1; r >= 0; r--){
+      if (removals[r].parentNode) removals[r].parentNode.removeChild(removals[r]);
+    }
+  }
+  function waitForImages(){
+    var imgs = Array.prototype.slice.call(document.images || []);
+    return Promise.all(imgs.map(function(img){
+      if (img.complete) return Promise.resolve();
+      return new Promise(function(resolve){
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      });
+    }));
+  }
+  function scrollOffset(){
+    var doc = document.documentElement;
+    var body = document.body;
+    return {
+      x: Math.max(window.scrollX || 0, doc ? doc.scrollLeft || 0 : 0, body ? body.scrollLeft || 0 : 0),
+      y: Math.max(window.scrollY || 0, doc ? doc.scrollTop || 0 : 0, body ? body.scrollTop || 0 : 0)
+    };
+  }
+  function escapeAttribute(value){
+    return String(value || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+  function snapshotBackgroundColor(){
+    try {
+      var probe = window.getComputedStyle(document.body || document.documentElement);
+      var bg = probe && probe.backgroundColor || '';
+      if (!bg || bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') return '#ffffff';
+      return bg;
+    } catch (_) { return '#ffffff'; }
+  }
+  // After painting, sample the canvas: a uniform (single-color) bitmap means
+  // the foreignObject rasterizer painted nothing — Chromium frequently refuses
+  // to paint <foreignObject> HTML loaded via <img>. Treating that as an honest
+  // 'empty-render' error (instead of shipping the background-only frame) lets
+  // the host fall back / surface a real failure rather than a silent black PNG.
+  function canvasLooksBlank(ctx, cw, ch){
+    try {
+      var data = ctx.getImageData(0, 0, cw, ch).data;
+      var step = Math.max(4, Math.floor((cw * ch) / 4096)) * 4;
+      var first = null, samples = 0;
+      for (var i = 0; i + 3 < data.length; i += step){
+        samples++;
+        if (!first){ first = [data[i], data[i+1], data[i+2], data[i+3]]; continue; }
+        if (Math.abs(data[i]-first[0]) > 6 || Math.abs(data[i+1]-first[1]) > 6 ||
+            Math.abs(data[i+2]-first[2]) > 6 || Math.abs(data[i+3]-first[3]) > 6) return false;
+      }
+      return samples > 8;
+    } catch (_) { return false; }
+  }
+  function renderSnapshot(id){
+    var w = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
+    var h = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+    var dpr = window.devicePixelRatio || 1;
+    var bgColor = snapshotBackgroundColor();
+    var docW = Math.max(w, document.documentElement.scrollWidth || 0, document.body ? document.body.scrollWidth : 0);
+    var docH = Math.max(h, document.documentElement.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
+    var clone = document.documentElement.cloneNode(true);
+    clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    inlineSnapshotStyles(document.documentElement, clone);
+    pruneHiddenSnapshotNodes(document.documentElement, clone);
+    var scroll = scrollOffset();
+    var cloneBody = clone.querySelector('body');
+    var rootStyle = clone.getAttribute('style') || '';
+    var bodyStyle = cloneBody ? cloneBody.getAttribute('style') || '' : '';
+    var bodyContent = cloneBody ? cloneBody.innerHTML : clone.innerHTML;
+    var wrapperStyle = rootStyle + bodyStyle +
+      'margin:0;position:relative;left:' + (-scroll.x) + 'px;top:' + (-scroll.y) + 'px;' +
+      'width:' + docW + 'px;height:' + docH + 'px;overflow:visible;';
+    var html = '<div xmlns="http://www.w3.org/1999/xhtml" style="' + escapeAttribute(wrapperStyle) + '">' + bodyContent + '</div>';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' +
+      '<foreignObject x="0" y="0" width="' + docW + '" height="' + docH + '">' +
+      html +
+      '</foreignObject></svg>';
+    var img = new Image();
+    img.onload = function(){
+      try {
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.floor(w * dpr));
+        canvas.height = Math.max(1, Math.floor(h * dpr));
+        var ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('no 2d context');
+        ctx.scale(dpr, dpr);
+        // Opaque base so a transparent (un-painted) raster never flattens to
+        // pure black in clipboards / PNG viewers.
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        if (canvasLooksBlank(ctx, canvas.width, canvas.height)) {
+          window.parent.postMessage({ type: 'od:snapshot:result', id: id, error: 'empty-render' }, '*');
+          return;
+        }
+        window.parent.postMessage({ type: 'od:snapshot:result', id: id, dataUrl: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height }, '*');
+      } catch (err) {
+        window.parent.postMessage({ type: 'od:snapshot:result', id: id, error: String(err && err.message || err) }, '*');
+      }
+    };
+    function encodedSvgDataUrl(){
+      var encoded = encodeURIComponent(svg);
+      return 'data:image/svg+xml;charset=utf-8,' + encoded;
+    }
+    img.onerror = function(){
+      window.parent.postMessage({ type: 'od:snapshot:result', id: id, error: 'snapshot image failed' }, '*');
+    };
+    img.src = encodedSvgDataUrl();
+  }
+  window.addEventListener('message', function(ev){
+    var data = ev && ev.data;
+    if (!data || data.type !== 'od:snapshot' || !data.id) return;
+    waitForImages().then(function(){ renderSnapshot(String(data.id)); });
+  });
+})();</script><script data-od-srcdoc-transport-activation>(function(){
+  window.addEventListener('message', function(ev){
+    var data = ev && ev.data;
+    if (!data || data.type !== 'od:srcdoc-transport-activate' || typeof data.html !== 'string') return;
+    document.open();
+    document.write(data.html);
+    document.close();
+  });
+})();</script></body></html>

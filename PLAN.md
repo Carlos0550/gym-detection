@@ -10,7 +10,9 @@ Documento de tracking interno. Refleja el plan original acordado y el estado de 
 | Vector store | pgvector | Una sola DB, filtro multi-tenant en SQL, escala a HNSW |
 | Multi-tenant | Shared DB + `gym_id` denormalizado | Simple para MVP, suficiente aislamiento |
 | Imágenes de verificación | NO se guardan | Minimización de datos biométricos |
-| Consentimiento | `biometric_consent_at` bloqueante en enrolamiento | Requisito legal y técnico |
+| Consentimiento | `biometric_consent_at` en `GymUser`, bloqueante en enrolamiento | Requisito legal; manager lo marca vía API |
+| Documento/DNI | Campo `document` en `GymUser`, `UNIQUE(gym_id, document)` | Mismo DNI permitido en gyms distintos, no duplicado dentro del mismo gym |
+| Membresía | Tabla `Membership` mínima (fechas + status), vigencia requerida para acceso | Modelo de acceso al gimnasio sin tabla `Member` separada |
 | Auth | JWT stateless (sin Redis) | Suficiente para MVP |
 | Tareas async | Sin Celery/Redis en MVP | La verificación es real-time |
 | Backend | Python 3.12 + FastAPI async + SQLAlchemy 2 async + Alembic | Stack moderno, async nativo |
@@ -68,40 +70,34 @@ Documento de tracking interno. Refleja el plan original acordado y el estado de 
 - ~~`seed.py` funcional: crea superadmin + gym demo + owner link (idempotente)~~
 - ~~Tests: conftest con test DB dedicada (`gym_test`), fixtures (users, gym, tokens, manager), tests para auth + gyms + users + admin~~
 
-### ~~Etapa 2 — Members + Memberships~~ ❌ (saltada: overengineering)
-- ~~Modelos: `Member`, `Membership` con enums `MemberStatus` y `MembershipStatus`~~
-- ~~Campo `biometric_consent_at` en Member (bloqueante para enrolar)~~
-- ~~Tabla `members` con `UNIQUE(gym_id, document)`~~
-- ~~Tabla `memberships` con FK a members~~
-- ~~Cálculo de membresía vigente (start_date/end_date + status)~~
-- ~~Endpoints CRUD para members y memberships~~
+### ~~Etapa 2 — Membership mínima + GymUser extendido~~ ✅
+- ~~`document` en `GymUser` con `UNIQUE(gym_id, document)`~~
+- ~~`biometric_consent_at` en `GymUser`~~
+- ~~Modelo `Membership` (gym_user link, start/end, status)~~
+- ~~Validación de membresía vigente en verificación~~
+- ~~POST membresías, PATCH consentimiento/documento~~
+
+> Etapa 2 original (tablas `Member` + `Membership` separadas) se descartó. El vínculo persona↔gym sigue siendo `GymUser`; `Membership` modela solo la vigencia de acceso.
+
+### ~~Etapa 3 — Motor facial~~ ✅
+- ~~`app/modules/face/engine.py`: wrapper InsightFace~~
+- ~~Carga en `lifespan` → `app.state.face_engine`~~
+- ~~Dependencia `get_face_engine` con degraded mode (503)~~
+- ~~Tests con mock + validación de imágenes~~
+
+### ~~Etapa 4 — Enrolamiento facial~~ ✅
+- ~~`POST /api/v1/gyms/{gym_id}/users/{user_id}/face/enroll`~~
+- ~~Tabla `face_embeddings` vector(512) + pgvector~~
+- ~~Anti-duplicado cosine >= 0.60~~
+- ~~Bloqueo por `biometric_consent_at`~~
+- ~~GET/DELETE embeddings~~
+
+### ~~Etapa 5 — Verificación facial~~ ✅
+- ~~`POST /api/v1/gyms/{gym_id}/access/verify-face` (multipart, min 2 frames)~~
+- ~~Búsqueda pgvector scoped por `gym_id`~~
+- ~~Liveness básico (movimiento bbox/kps + consistencia inter-frame)~~
+- ~~Tabla `access_logs` + GET `/access/logs`~~
 - ~~Tests~~
-
-> **Razón del skip:** `User` + `GymUser(rol=CLIENT)` ya modelan "esta persona es miembro de este gym". Crear tablas separadas para `Member` y `Membership` duplicaba el modelo y agregaba un `biometric_consent_at` redundante. Los embeddings faciales y access logs se atan a `user_id` directamente. El consentimiento biométrico (cuando llegue el momento) vive en `GymUser`.
-
-### Etapa 3 — Motor facial
-- `app/modules/face/engine.py`: wrapper de InsightFace
-- Carga del modelo en `lifespan` de FastAPI (en startup)
-- Configuración desde env (modelo, provider, det_size, thresholds)
-- Tests unitarios del engine con imágenes fixture
-
-### Etapa 4 — Enrolamiento facial
-- `POST /api/v1/gyms/{gym_id}/members/{member_id}/face/enroll` (multipart)
-- Validaciones: exactamente 1 rostro, det_score mínimo, tamaño mínimo
-- Anti-duplicado: buscar similitud >= 0.60 contra otros miembros del gym
-- Tabla `face_embeddings` con columna `vector(512)` (pgvector) y `gym_id` denormalizado
-- `GET/DELETE /face` y `DELETE /face/{id}`
-- Audit log de enrolamientos
-- Tests
-
-### Etapa 5 — Verificación facial
-- `POST /api/v1/gyms/{gym_id}/access/verify-face` (multipart)
-- Query pgvector: top-1 por cosine distance filtrado por `gym_id`
-- Thresholds: >=0.55 match, 0.40-0.55 low_confidence, <0.40 unknown
-- Validación de membresía vigente
-- Tabla `access_logs` con member_id (nullable) y resultado
-- Respuesta con el formato exacto pedido (matched/confidence/member/membership/access)
-- Tests
 
 ### Etapa 6 — Frontend base
 - Setup login con shadcn `Form`, `Input`, `Button`
@@ -130,7 +126,7 @@ Documento de tracking interno. Refleja el plan original acordado y el estado de 
 
 ## Mejoras futuras (post-MVP)
 
-- 🔴 **Crítico:** Liveness / anti-spoofing (detectar fotos impresas, videos)
+- 🔴 **Crítico:** Liveness avanzado (depth, challenge-response)
 - Re-enrolamiento periódico (los rostros cambian con el tiempo)
 - Audit logs detallados + exportación de datos del miembro (GDPR-style)
 - Rate limiting por IP y por user (slowapi o middleware custom)
@@ -149,7 +145,7 @@ Documento de tracking interno. Refleja el plan original acordado y el estado de 
 ## Riesgos identificados
 
 - 🟡 **Riesgo de baja calidad de embeddings** con mala iluminación → mitigado con validación de `det_score` y `face_size` en enrolamiento
-- 🟡 **Spoofing con foto impresa** → TODO crítico para v1, no resuelto en MVP
+- 🟡 **Spoofing con foto impresa** → mitigado en MVP con liveness básico (movimiento + multi-frame); no resuelto al 100%
 - 🟡 **Performance de pgvector con muchos miembros** → empezar sin índice, agregar HNSW cuando se vea degradación
 - 🟡 **Falsos positivos en verificación** → threshold conservador (0.55), `low_confidence` para zona gris
 - 🟡 **Privacidad biométrica** → embeddings son vectores opacos, no reversibles a foto, pero técnicamente sensibles

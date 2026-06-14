@@ -82,6 +82,7 @@ async def test_owner_creates_default_client(
             "email": "newclient@example.com",
             "password": "newpass1234",
             "full_name": "New Client",
+            "document": "30111111",
         },
         headers=auth_headers(owner_token),
     )
@@ -103,6 +104,7 @@ async def test_owner_creates_explicit_client(
             "email": "explicitclient@example.com",
             "password": "newpass1234",
             "full_name": "Explicit Client",
+            "document": "30222222",
             "kind_role": "client",
         },
         headers=auth_headers(owner_token),
@@ -140,6 +142,7 @@ async def test_manager_creates_client_without_kind_role(
             "email": "frommanager@example.com",
             "password": "newpass1234",
             "full_name": "From Manager",
+            "document": "30333333",
         },
         headers=auth_headers(manager_token),
     )
@@ -157,6 +160,7 @@ async def test_manager_ignores_kind_role_manager(
             "email": "sneakymanager@example.com",
             "password": "newpass1234",
             "full_name": "Sneaky Manager",
+            "document": "30444444",
             "kind_role": "manager",
         },
         headers=auth_headers(manager_token),
@@ -198,6 +202,7 @@ async def test_create_gym_user_with_duplicate_email_returns_409(
             "email": superadmin_user.email,
             "password": "newpass1234",
             "full_name": "Dup",
+            "document": "30555555",
         },
         headers=auth_headers(owner_token),
     )
@@ -213,6 +218,7 @@ async def test_create_gym_user_normalizes_email(
             "email": "MiXeD@Example.COM",
             "password": "newpass1234",
             "full_name": "Mixed",
+            "document": "30666666",
         },
         headers=auth_headers(owner_token),
     )
@@ -263,6 +269,7 @@ async def test_new_user_can_login_and_see_membership(
             "email": "linked@example.com",
             "password": "newpass1234",
             "full_name": "Linked User",
+            "document": "30777777",
         },
         headers=auth_headers(owner_token),
     )
@@ -281,3 +288,100 @@ async def test_new_user_can_login_and_see_membership(
     assert len(data["memberships"]) == 1
     assert data["memberships"][0]["gym_id"] == str(gym.id)
     assert data["memberships"][0]["role"] == "client"
+
+
+async def test_client_requires_document(
+    client: AsyncClient, owner_token: str, owner_link, gym: Gym
+):
+    response = await client.post(
+        f"/api/v1/gyms/{gym.id}/users",
+        json={
+            "email": "nodni@example.com",
+            "password": "newpass1234",
+            "full_name": "No DNI",
+        },
+        headers=auth_headers(owner_token),
+    )
+    assert response.status_code == 409
+
+
+async def test_duplicate_document_same_gym_returns_409(
+    client: AsyncClient, owner_token: str, owner_link, gym: Gym, client_link
+):
+    response = await client.post(
+        f"/api/v1/gyms/{gym.id}/users",
+        json={
+            "email": "dupdni@example.com",
+            "password": "newpass1234",
+            "full_name": "Dup DNI",
+            "document": "30123456",
+        },
+        headers=auth_headers(owner_token),
+    )
+    assert response.status_code == 409
+
+
+async def test_same_document_allowed_in_different_gym(
+    client: AsyncClient,
+    owner_token: str,
+    owner_link,
+    gym: Gym,
+    client_link,
+    engine,
+    owner_user: User,
+):
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from app.models.enums import GymUserRole
+    from app.models.gym import Gym as GymModel
+    from app.models.gym_user import GymUser
+
+    factory = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
+    async with factory() as session:
+        other_gym = GymModel(name="Other Gym Doc", address="X", phone="+5491100000002")
+        session.add(other_gym)
+        await session.flush()
+        session.add(
+            GymUser(gym_id=other_gym.id, user_id=owner_user.id, role=GymUserRole.OWNER)
+        )
+        await session.commit()
+        other_id = other_gym.id
+
+    response = await client.post(
+        f"/api/v1/gyms/{other_id}/users",
+        json={
+            "email": "same-dni-other-gym@example.com",
+            "password": "newpass1234",
+            "full_name": "Same DNI Other Gym",
+            "document": "30123456",
+        },
+        headers=auth_headers(owner_token),
+    )
+    assert response.status_code == 201
+
+
+async def test_list_gym_clients(
+    client: AsyncClient, owner_token: str, owner_link, gym: Gym, client_link, active_membership
+):
+    response = await client.get(
+        f"/api/v1/gyms/{gym.id}/users",
+        headers=auth_headers(owner_token),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) >= 1
+    assert data[0]["document"] == "30123456"
+    assert data[0]["active_membership"] is not None
+    assert data[0]["active_membership"]["status"] == "active"
+
+
+async def test_patch_biometric_consent(
+    client: AsyncClient, owner_token: str, owner_link, gym: Gym, client_user: User, client_link
+):
+    response = await client.patch(
+        f"/api/v1/gyms/{gym.id}/users/{client_user.id}",
+        json={"grant_biometric_consent": True},
+        headers=auth_headers(owner_token),
+    )
+    assert response.status_code == 200
+    assert response.json()["biometric_consent_at"] is not None

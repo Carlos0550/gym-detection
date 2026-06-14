@@ -11,9 +11,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Cache de deps: copiamos solo manifests primero
-COPY package.json ./
-# Si vas a usar lockfile en el futuro, copiar también:
-# COPY package-lock.json* ./
+COPY package.json package-lock.json ./
 
 # Instalación. Si hay package-lock.json se usa npm ci, si no, npm install.
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi

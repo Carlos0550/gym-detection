@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, UniqueConstraint, func
+from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,7 +15,10 @@ from app.models.user import User
 
 class GymUser(Base):
     __tablename__ = "gym_users"
-    __table_args__ = (UniqueConstraint("gym_id", "user_id", name="uq_gym_user"),)
+    __table_args__ = (
+        UniqueConstraint("gym_id", "user_id", name="uq_gym_user"),
+        UniqueConstraint("gym_id", "document", name="uq_gym_user_document"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -37,6 +40,10 @@ class GymUser(Base):
         nullable=False,
         default=GymUserRole.CLIENT,
     )
+    document: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    biometric_consent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -44,6 +51,9 @@ class GymUser(Base):
 
     user: Mapped[User] = relationship(back_populates="gym_memberships")
     gym: Mapped[Gym] = relationship(back_populates="user_links")
+    memberships: Mapped[list["Membership"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        back_populates="gym_user", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<GymUser gym={self.gym_id} user={self.user_id} role={self.role}>"

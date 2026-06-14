@@ -96,11 +96,18 @@ class FaceEngine:
         for raw in raw_faces:
             bbox_int = tuple(int(round(x)) for x in raw["bbox"])
             embedding = np.asarray(raw["embedding"], dtype=np.float32)
+            kps_raw = raw.get("kps")
+            kps = (
+                np.asarray(kps_raw, dtype=np.float32)
+                if kps_raw is not None
+                else None
+            )
             detections.append(
                 FaceDetection(
                     bbox=bbox_int,
                     det_score=float(raw["det_score"]),
                     embedding=embedding,
+                    kps=kps,
                 )
             )
         return detections

@@ -1,0 +1,96 @@
+# Producción en VPS Linux — sin volúmenes de hot-reload.
+# Uso:
+#   cp backend/.env.example backend/.env   # ajustar secretos y CORS
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Variables sensibles vía .env en la raíz o backend/.env (POSTGRES_*, JWT_SECRET, etc.)
+
+name: gym-detection-prod
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: gym-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gym}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-gym}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gym} -d ${POSTGRES_DB:-gym}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - gym-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gym-backend-prod
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+      AUTO_MIGRATE: "true"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-gym}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gym}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-gym}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gym}
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--workers",
+        "2",
+      ]
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - insightface_cache:/home/appuser/.insightface
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - gym-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    container_name: gym-frontend-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - gym-net
+
+volumes:
+  postgres_data:
+    driver: local
+  insightface_cache:
+    driver: local
+
+networks:
+  gym-net:
+    driver: bridge

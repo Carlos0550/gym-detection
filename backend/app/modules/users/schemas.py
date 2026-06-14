@@ -1,28 +1,33 @@
 """DTOs del módulo users."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
-# Roles asignables a través de POST /gyms/{gym_id}/users.
-# OWNER nunca: solo se asigna vía /gyms/public/onboarding o promoción manual.
 GymAssignableRole = Literal["client", "manager"]
 
 
+class ActiveMembershipSummary(BaseModel):
+    id: uuid.UUID
+    status: str
+    start_date: date
+    end_date: date | None = None
+
+
 class UserCreateByGymMember(BaseModel):
-    """Body para POST /gyms/{gym_id}/users.
-
-    ``kind_role`` solo se respeta si el caller es OWNER del gym:
-        - OWNER: puede crear CLIENT o MANAGER (default CLIENT).
-        - MANAGER: siempre crea CLIENT; el campo se ignora silenciosamente.
-    """
-
     email: EmailStr = Field(examples=["newmember@gym.com"])
     password: str = Field(min_length=8, max_length=128, examples=["strongpass123"])
     full_name: str = Field(min_length=2, max_length=255, examples=["Jane Doe"])
+    document: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=50,
+        examples=["30123456"],
+        description="DNI/documento. Obligatorio para clientes.",
+    )
     kind_role: GymAssignableRole | None = Field(
         default=None,
         examples=["client"],
@@ -31,12 +36,37 @@ class UserCreateByGymMember(BaseModel):
 
 
 class UserCreatedResponse(BaseModel):
-    id: uuid.UUID = Field(examples=["3fa85f64-5717-4562-b3fc-2c963f66afa6"])
-    email: EmailStr = Field(examples=["newmember@gym.com"])
-    full_name: str = Field(examples=["Jane Doe"])
-    role: str = Field(examples=["client"])
-    gym_id: uuid.UUID = Field(examples=["3fa85f64-5717-4562-b3fc-2c963f66afa6"])
+    id: uuid.UUID
+    email: EmailStr
+    full_name: str
+    document: str | None = None
+    role: str
+    gym_id: uuid.UUID
     is_active: bool = True
-    created_at: datetime = Field(examples=["2026-06-07T03:00:00Z"])
+    biometric_consent_at: datetime | None = None
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class GymClientResponse(BaseModel):
+    id: uuid.UUID
+    email: EmailStr
+    full_name: str
+    document: str | None = None
+    role: str
+    gym_id: uuid.UUID
+    is_active: bool
+    biometric_consent_at: datetime | None = None
+    active_membership: ActiveMembershipSummary | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GymUserUpdate(BaseModel):
+    document: str | None = Field(default=None, min_length=3, max_length=50)
+    grant_biometric_consent: bool | None = Field(
+        default=None,
+        description="True otorga consentimiento biométrico; False lo revoca.",
+    )

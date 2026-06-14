@@ -23,7 +23,7 @@ help: ## Mostrar esta ayuda
 
 # ===== Docker compose =====
 up: ## Levantar todos los servicios en background
-	$(COMPOSE) -f $(COMPOSE_FILE) up -d --build
+	$(COMPOSE) -f $(COMPOSE_FILE) up -d 
 
 down: ## Detener y eliminar contenedores (NO elimina volúmenes)
 	$(COMPOSE) -f $(COMPOSE_FILE) down

@@ -1,18 +1,13 @@
-"""Punto de entrada FastAPI.
+"""Punto de entrada FastAPI."""
 
-Etapa 0:
-    - App inicializada con configuración.
-    - Healthcheck en GET /health.
-    - CORS configurado para el frontend.
-    - Lifespan placeholder (en Etapa 3 se precarga InsightFace).
+from __future__ import annotations
 
-Etapas siguientes agregan routers de auth, gyms, members, etc. en
-``app.api.v1``.
-"""
-
-from contextlib import asynccontextmanager
+import asyncio
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
+from alembic import command
+from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
@@ -20,19 +15,37 @@ from fastapi.openapi.utils import get_openapi
 from app.api.v1 import api_v1_router
 from app.core.config import get_settings
 from app.core.logging import logger
+from app.modules.face.engine import FaceEngine
 
 settings = get_settings()
 
 
+def _run_migrations() -> None:
+    cfg = Config("alembic.ini")
+    command.upgrade(cfg, "head")
+
+
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    """Lifespan de la app. Etapa 3 carga aquí el motor InsightFace."""
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info(
         "app.startup",
         environment=settings.environment,
         face_model=settings.face_model_name,
         face_provider=settings.face_execution_provider,
     )
+
+    if settings.auto_migrate:
+        logger.info("app.migrate.start")
+        await asyncio.to_thread(_run_migrations)
+        logger.info("app.migrate.done")
+
+    face_engine = FaceEngine(settings)
+    app.state.face_engine = face_engine
+    if face_engine.is_loaded:
+        logger.info("app.face_engine.ready")
+    else:
+        logger.warning("app.face_engine.degraded")
+
     yield
     logger.info("app.shutdown")
 
@@ -47,7 +60,6 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Public endpoints que NO requieren auth
     _public_paths = {
         "/health",
         "/api/v1/auth/login",
@@ -89,14 +101,14 @@ def create_app() -> FastAPI:
 
     app.include_router(api_v1_router)
 
-    @app.get(
-        "/health",
-        tags=["health"],
-        summary="Health check",
-        description="Endpoint de verificación. Devuelve estado OK y el entorno activo.",
-    )
-    async def health() -> dict[str, str]:
-        return {"status": "ok", "environment": settings.environment}
+    @app.get("/health", tags=["health"], summary="Health check")
+    async def health() -> dict[str, str | bool]:
+        face_engine: FaceEngine | None = getattr(app.state, "face_engine", None)
+        return {
+            "status": "ok",
+            "environment": settings.environment,
+            "face_engine_loaded": bool(face_engine and face_engine.is_loaded),
+        }
 
     return app
 

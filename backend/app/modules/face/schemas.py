@@ -14,6 +14,7 @@ class FaceDetection:
     bbox: tuple[int,int,int,int]
     det_score: float
     embedding: NDArray[np.float32]
+    kps: NDArray[np.float32] | None = None
 
     def __post_init__(self) -> None:
         if self.embedding.shape != (EMBEDDING_DIM,):
@@ -24,4 +25,8 @@ class FaceDetection:
         if not 0.0 <= self.det_score <= 1.0:
             raise ValueError(
                 f"det_score fuera de rango [0,1]: {self.det_score}"
+            )
+        if self.kps is not None and self.kps.shape != (5, 2):
+            raise ValueError(
+                f"kps debe tener shape (5, 2), recibido: {self.kps.shape}"
             )

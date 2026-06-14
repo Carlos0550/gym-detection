@@ -2,7 +2,7 @@
 
 Sistema de reconocimiento facial para gimnasios. Permite identificar miembros y validar el estado de su membresía en tiempo real.
 
-> **Etapa actual: 1 — Auth & base ✅.** Auth con JWT, modelos `User`/`Gym`/`GymUser` con RBAC por gym, endpoint público de onboarding (`POST /gyms/public/onboarding`) para que un usuario nuevo registre su gym como OWNER.
+> **Etapa actual: MVP funcional (~85%).** Backend completo (auth, miembros, membresías, enrolamiento/verificación facial, access logs). Frontend con login, ABM miembros, enrolamiento webcam, recepción y logs. Pendiente: dashboard con métricas, ABM membresías en UI, docs/colección `.http` de prod.
 
 ---
 
@@ -114,13 +114,13 @@ gym-detection/
 
 - [x] **Etapa 0**: Setup base (estructura, docker, configs)
 - [x] **Etapa 1**: Auth & base — modelos User/Gym/GymUser, login JWT, RBAC por gym, onboarding público
-- [x] **Etapa 2**: ~~Members + Memberships CRUD + consentimiento biométrico~~ (saltada: overengineering)
-- [ ] **Etapa 3**: Motor facial (InsightFace engine, carga en lifespan)
-- [ ] **Etapa 4**: Enrolamiento facial (`POST /face/enroll`)
-- [ ] **Etapa 5**: Verificación facial (`POST /access/verify-face`)
-- [ ] **Etapa 6**: Frontend base (login, dashboard, ABM miembros)
-- [ ] **Etapa 7**: Frontend webcam (enrolamiento + control de acceso)
-- [ ] **Etapa 8**: Docker final + docs + colección de requests
+- [x] **Etapa 2**: Membership mínima + GymUser extendido (document, consent, membresía vigente)
+- [x] **Etapa 3**: Motor facial (InsightFace engine, carga en lifespan)
+- [x] **Etapa 4**: Enrolamiento facial (`POST /face/enroll`)
+- [x] **Etapa 5**: Verificación facial (`POST /access/verify-face`) + access logs
+- [x] **Etapa 6** *(parcial)*: Login, layout protegido, ABM miembros — falta dashboard con métricas y ABM membresías en UI
+- [x] **Etapa 7** *(parcial)*: Webcam enrolamiento + recepción — falta pulir UX de errores/cámara
+- [ ] **Etapa 8**: Docker prod (`docker-compose.prod.yml` ✅), docs finales y colección `.http`
 
 ### Mejoras futuras (post-MVP)
 
