@@ -40,27 +40,9 @@ restart: ## Reiniciar servicios
 logs: ## Ver logs en vivo (todos los servicios)
 	$(COMPOSE) -f $(COMPOSE_FILE) logs -f
 
-logs-be: ## Ver logs del backend
-	$(COMPOSE) -f $(COMPOSE_FILE) logs -f $(BACKEND)
-
-logs-fe: ## Ver logs del frontend
-	$(COMPOSE) -f $(COMPOSE_FILE) logs -f $(FRONTEND)
-
 logs-db: ## Ver logs de postgres
 	$(COMPOSE) -f $(COMPOSE_FILE) logs -f $(POSTGRES)
 
-ps: ## Listar servicios corriendo
-	$(COMPOSE) -f $(COMPOSE_FILE) ps
-
-# ===== Shells =====
-shell: ## Entrar al bash del backend
-	$(COMPOSE) -f $(COMPOSE_FILE) exec $(BACKEND) bash
-
-shell-fe: ## Entrar al bash del frontend
-	$(COMPOSE) -f $(COMPOSE_FILE) exec $(FRONTEND) sh
-
-db-shell: ## Abrir psql en postgres
-	$(COMPOSE) -f $(COMPOSE_FILE) exec $(POSTGRES) psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
 
 # ===== Backend: DB y migraciones =====
 migrate: ## Aplicar migraciones pendientes (alembic upgrade head)
