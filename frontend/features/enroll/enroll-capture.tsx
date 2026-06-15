@@ -101,6 +101,13 @@ export function EnrollCapture({ gymId, userId }: Props) {
     void start();
   }, [start]);
 
+  useEffect(() => {
+    return () => {
+      captureLockRef.current = false;
+      captureRunRef.current = false;
+    };
+  }, []);
+
   const mutation = useMutation({
     mutationFn: (frames: Blob[]) => enrollFace(gymId, userId, frames),
     onSuccess: () => {
@@ -208,12 +215,19 @@ export function EnrollCapture({ gymId, userId }: Props) {
   ]);
 
   const startManualCapture = useCallback(() => {
-    if (captureLockRef.current || status !== "active") return;
+    if (
+      captureLockRef.current ||
+      status !== "active" ||
+      CAPTURE_FLOW_PHASES.includes(phase) ||
+      phase === "submitting"
+    ) {
+      return;
+    }
     captureLockRef.current = true;
     captureRunRef.current = false;
     setFlashActive(false);
     setPhase("capturing");
-  }, [status]);
+  }, [phase, status]);
 
   useEffect(() => {
     if (
@@ -258,6 +272,7 @@ export function EnrollCapture({ gymId, userId }: Props) {
     if (phase !== "hold") return;
 
     const timer = setTimeout(() => {
+      if (captureLockRef.current) return;
       captureLockRef.current = true;
       captureRunRef.current = false;
       setPhase("capturing");
@@ -546,7 +561,7 @@ export function EnrollCapture({ gymId, userId }: Props) {
                   !hasConsent ||
                   isBusy ||
                   status !== "active" ||
-                  phase === "capturing"
+                  isInCaptureFlow
                 }
                 type="button"
               >
