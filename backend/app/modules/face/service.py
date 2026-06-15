@@ -20,7 +20,7 @@ from app.modules.face.pose_validator import (
     validate_guided_enroll_poses,
 )
 from app.modules.face.vector_search import find_duplicate_user_id
-from app.modules.face.vector_utils import to_embedding_list
+from app.modules.face.vector_utils import average_embeddings, to_embedding_list
 from app.modules.users.service import get_gym_user_link
 
 MIN_ENROLL_FRAMES = 3
@@ -76,11 +76,15 @@ async def enroll_face(
     try:
         detections = checker.detect_all(face_engine, frames)
         validate_guided_enroll_poses(detections)
-        detection = checker.verify_guided_enroll_detections(face_engine, detections)
+        checker.verify_guided_enroll_detections(face_engine, detections)
     except LivenessFailedError as exc:
         raise ConflictError(str(exc)) from exc
 
-    embedding = detection.embedding
+    # Promediamos las poses (centro/izquierda/derecha) para que la referencia
+    # represente el rostro completo y no solo la última pose girada. En
+    # recepción la persona mira de frente, así que una referencia frontal-media
+    # eleva la coincidencia.
+    embedding = average_embeddings([d.embedding for d in detections])
 
     duplicate_user_id = await find_duplicate_user_id(
         db,
